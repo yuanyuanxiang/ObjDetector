@@ -112,4 +112,5 @@ public:
 	afx_msg void OnEditStop();
 	afx_msg void OnUpdateEditStop(CCmdUI *pCmdUI);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 };

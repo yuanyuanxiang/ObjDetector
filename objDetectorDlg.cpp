@@ -11,6 +11,7 @@
 #define new DEBUG_NEW
 #endif
 
+#define EDGE 0
 
 // 给图像添加矩形并标注文字
 void AddRectanges(cv::Mat &m, const std::vector<Tips> &tips)
@@ -80,7 +81,6 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 			break;
 		while (!pThis->m_reader.PushImage(m))
 			Sleep(10);
-		Sleep(10);
 	} while (!pThis->m_bExit);
 	timeEndPeriod(1);
 	pThis->m_nThreadState[_DetectVideo] = Thread_Stop;
@@ -209,6 +209,7 @@ BEGIN_MESSAGE_MAP(CobjDetectorDlg, CDialogEx)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PAUSE, &CobjDetectorDlg::OnUpdateEditPause)
 	ON_COMMAND(ID_EDIT_STOP, &CobjDetectorDlg::OnEditStop)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_STOP, &CobjDetectorDlg::OnUpdateEditStop)
+	ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 
@@ -291,6 +292,8 @@ void CobjDetectorDlg::OnPaint()
 	}
 	else
 	{
+		// 此函数过于频繁使得程序空闲时CPU也很高，因此加上Sleep
+		Sleep(40);
 		m_reader.Draw(m_hPaintDC, m_rtPaint);
 	}
 }
@@ -580,4 +583,19 @@ BOOL CobjDetectorDlg::PreTranslateMessage(MSG* pMsg)
 		return TRUE;
 
 	return CDialogEx::PreTranslateMessage(pMsg);
+}
+
+
+void CobjDetectorDlg::OnSize(UINT nType, int cx, int cy)
+{
+	CDialogEx::OnSize(nType, cx, cy);
+
+	if (m_picCtrl.GetSafeHwnd())
+	{
+		CRect rt;
+		GetClientRect(&rt);
+		m_picCtrl.MoveWindow(CRect(rt.left + EDGE, rt.top + EDGE, 
+			rt.right - EDGE, rt.bottom - EDGE), TRUE);
+		m_picCtrl.GetClientRect(&m_rtPaint);
+	}
 }

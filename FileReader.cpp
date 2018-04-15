@@ -91,16 +91,19 @@ int CFileReader::PopImage() // 返回当前帧数量
 // 绘制当前帧
 void CFileReader::Draw(HDC hDc, CRect &rt)
 {
-	if (!IsEmpty())
+	Lock();
+	if (m_Buffer.empty() || m_Buffer.front().empty())
 	{
-		Lock();
+		//FillRect(hDc, rt, CBrush(0xffffff));
+		Unlock();
+	}
+	else 
+	{
 		IplImage t = IplImage(m_Buffer.front());
 		m_Image.CopyOf(&t, 1);
 		Unlock();
 		m_Image.DrawToHDC(hDc, rt);
 	}
-	else
-		FillRect(hDc, rt, CBrush(0xffffff));
 }
 
 
