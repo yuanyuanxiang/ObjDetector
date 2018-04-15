@@ -1,0 +1,101 @@
+
+// stdafx.h : 标准系统包含文件的包含文件，
+// 或是经常使用但不常更改的
+// 特定于项目的包含文件
+
+#pragma once
+
+// OpenCV
+#define USING_OPENCV 1
+
+// Tensorflow
+#define USING_TENSORFLOW 1
+
+#ifdef _DEBUG
+// 如果没有 Visual Leak Detector ，需注释此行
+#if !USING_TENSORFLOW
+#include "vld.h"
+#endif
+#endif
+
+#ifndef VC_EXTRALEAN
+#define VC_EXTRALEAN            // 从 Windows 头中排除极少使用的资料
+#endif
+
+#include "targetver.h"
+
+#define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS      // 某些 CString 构造函数将是显式的
+
+// 关闭 MFC 对某些常见但经常可放心忽略的警告消息的隐藏
+#define _AFX_ALL_WARNINGS
+
+#include <afxwin.h>         // MFC 核心组件和标准组件
+#include <afxext.h>         // MFC 扩展
+
+
+#include <afxdisp.h>        // MFC 自动化类
+
+
+
+#ifndef _AFX_NO_OLE_SUPPORT
+#include <afxdtctl.h>           // MFC 对 Internet Explorer 4 公共控件的支持
+#endif
+#ifndef _AFX_NO_AFXCMN_SUPPORT
+#include <afxcmn.h>             // MFC 对 Windows 公共控件的支持
+#endif // _AFX_NO_AFXCMN_SUPPORT
+
+#include <afxcontrolbars.h>     // 功能区和控件条的 MFC 支持
+
+#if USING_OPENCV
+
+#include<opencv2/opencv.hpp>   
+#include<opencv/cv.h> 
+using namespace cv;
+
+#define CV_VER "320"
+
+#ifdef _DEBUG
+#define CV_LIB_PATH "D:/opencv/opencv32/lib/Debug/"
+#define CV_LIB_X(LIB, VER) CV_LIB_PATH##"opencv_"##LIB##VER##"d.lib"
+#else
+#define CV_LIB_PATH "D:/opencv/opencv32/lib/Release/"
+#define CV_LIB_X(LIB, VER) CV_LIB_PATH##"opencv_"##LIB##VER##".lib"
+#endif
+
+#define USING_CV_LIB(LIB) CV_LIB_X(LIB, CV_VER)
+
+#pragma comment(lib, USING_CV_LIB("core"))
+#pragma comment(lib, USING_CV_LIB("highgui"))
+#pragma comment(lib, USING_CV_LIB("imgproc"))
+#pragma comment(lib, USING_CV_LIB("video"))
+#pragma comment(lib, USING_CV_LIB("videoio"))
+#pragma comment(lib, USING_CV_LIB("imgcodecs"))
+#pragma comment(lib, USING_CV_LIB("photo"))
+
+#endif
+
+
+#ifdef _UNICODE
+#if defined _M_IX86
+#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='x86' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#elif defined _M_X64
+#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='amd64' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#else
+#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#endif
+#endif
+
+#include <MMSystem.h>
+#pragma comment(lib, "winmm.lib")
+
+// 高精度的睡眠函数
+#define Sleep_m(ms) { timeBeginPeriod(1); Sleep(ms); timeEndPeriod(1); }
+
+// 以步长n毫秒在条件C下等待T秒(n是步长，必须能整除1000)
+#define WAIT_n(C, T, n) {assert(!(1000%(n)));int s=(1000*(T))/(n);do{Sleep(n);}while((C)&&(--s));}
+
+// 在条件C成立时等待T秒(步长10ms)
+#define WAIT(C, T) { timeBeginPeriod(1); WAIT_n(C, T, 10); timeEndPeriod(1); }
+
+// 在条件C成立时等待T秒(步长1ms)
+#define WAIT_1(C, T) { timeBeginPeriod(1); WAIT_n(C, T, 1); timeEndPeriod(1); }

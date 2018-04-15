@@ -1,0 +1,12 @@
+*.svn-base
+*.tlog
+*.pch
+*.obj
+*.pdb
+*.log
+*.idb
+*.ilk
+*.aps
+*.ipch
+*.suo
+*.sdf
