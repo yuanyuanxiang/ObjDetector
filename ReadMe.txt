@@ -1,41 +1,41 @@
-ÕâÊÇÒ»¸öMFC(C++)µ÷ÓÃPython£¨TensorFlow£©µÄVisual StudioÏîÄ¿¡£
+è¿™æ˜¯ä¸€ä¸ªMFC(C++)è°ƒç”¨Pythonï¼ˆTensorFlowï¼‰çš„Visual Studioé¡¹ç›®ã€‚
 
 #CallPython
-µ÷ÓÃTensorFlow¶ÔÒ»ÕÅÍ¼Ïñ½øÐÐÄ¿±ê¼ì²âµÄÀý×Ó¡£
+è°ƒç”¨TensorFlowå¯¹ä¸€å¼ å›¾åƒè¿›è¡Œç›®æ ‡æ£€æµ‹çš„ä¾‹å­ã€‚
 
-#pbjDetector
-Ò»¸ö»ùÓÚ¶Ô»°¿òµÄµ÷ÓÃTensorFlow½øÐÐÄ¿±ê¼ì²âµÄÀý×Ó¡£
+#objDetector
+ä¸€ä¸ªåŸºäºŽå¯¹è¯æ¡†çš„è°ƒç”¨TensorFlowè¿›è¡Œç›®æ ‡æ£€æµ‹çš„ä¾‹å­ã€‚
 
 #ShowImage
-Ò»¸öC++µ÷ÓÃPython·µ»Ønumpy arrayµÄÀý×Ó¡£
+ä¸€ä¸ªC++è°ƒç”¨Pythonè¿”å›žnumpy arrayçš„ä¾‹å­ã€‚
 
-#±àÒëÇ°ÖÃÌõ¼þ
-0¡¢ÒÑÑµÁ·ºÃµÄÄ£ÐÍ£¨frozen_inference_graph.pb£©
-1¡¢°²×°python3.5 64Î»£¬°²×°OpenCV 64Î»
-2¡¢pip install numpy
-3¡¢pip install pillow
-4¡¢pip install matplotlib
-5¡¢pip install tensorflow
-6¡¢ÆäËû°üÊÓÇé¿ö¶ø¶¨
+#ç¼–è¯‘å‰ç½®æ¡ä»¶
+0ã€å·²è®­ç»ƒå¥½çš„æ¨¡åž‹ï¼ˆfrozen_inference_graph.pbï¼‰
+1ã€å®‰è£…python3.5 64ä½ï¼Œå®‰è£…OpenCV 64ä½
+2ã€pip install numpy
+3ã€pip install pillow
+4ã€pip install matplotlib
+5ã€pip install tensorflow
+6ã€å…¶ä»–åŒ…è§†æƒ…å†µè€Œå®š
 
-#±àÒë×¢ÒâÊÂÏî
+#ç¼–è¯‘æ³¨æ„äº‹é¡¹
 
-1¡¢ÎªÏîÄ¿Ìí¼ÓPythonµÄ¸½¼Ó°üº¬Ä¿Â¼¼°¿âÄ¿Â¼£¬¸´ÖÆpythonXX.libµÄ±¸·Ý£¬²¢ÖØÃüÃûÎªpythonXX_d.lib;
+1ã€ä¸ºé¡¹ç›®æ·»åŠ Pythonçš„é™„åŠ åŒ…å«ç›®å½•åŠåº“ç›®å½•ï¼Œå¤åˆ¶pythonXX.libçš„å¤‡ä»½ï¼Œå¹¶é‡å‘½åä¸ºpythonXX_d.lib;
 
-1¡¢¸ù¾Ý¸öÈË¼ÆËã»ú£¬±àÒëºÃopenCV£¬²¢ÔÚstdafx.h»òÆäËûÁ´½ÓµÄÎ»ÖÃÅäÖÃOpenCV°æ±¾¼°Â·¾¶£»
+1ã€æ ¹æ®ä¸ªäººè®¡ç®—æœºï¼Œç¼–è¯‘å¥½openCVï¼Œå¹¶åœ¨stdafx.hæˆ–å…¶ä»–é“¾æŽ¥çš„ä½ç½®é…ç½®OpenCVç‰ˆæœ¬åŠè·¯å¾„ï¼›
 
-2¡¢error LNK2019: ÎÞ·¨½âÎöµÄÍâ²¿·ûºÅ __imp___Py_NegativeRefcount¡¢__imp___Py_RefTotal½â¾ö·½°¸£º
+2ã€error LNK2019: æ— æ³•è§£æžçš„å¤–éƒ¨ç¬¦å· __imp___Py_NegativeRefcountã€__imp___Py_RefTotalè§£å†³æ–¹æ¡ˆï¼š
 
-    ×¢ÊÍµôobject.hÎÄ¼þµÚ56ÐÐ #define Py_TRACE_REFS
+    æ³¨é‡ŠæŽ‰object.hæ–‡ä»¶ç¬¬56è¡Œ #define Py_TRACE_REFS
 	
-3¡¢¸ù¾Ý¸öÈËÉèÖÃ£¬ÐÞ¸ÄPy_SetPythonHomeÖÐpythonµÄÄ¿Â¼£¨ºê£ºPYTHON_HOME£©£»
+3ã€æ ¹æ®ä¸ªäººè®¾ç½®ï¼Œä¿®æ”¹Py_SetPythonHomeä¸­pythonçš„ç›®å½•ï¼ˆå®ï¼šPYTHON_HOMEï¼‰ï¼›
 
-4¡¢ÐèÒª½«±»µ÷ÓÃµÄ *.py ÎÄ¼þ¿½±´µ½Éú³ÉÄ¿Â¼£»
+4ã€éœ€è¦å°†è¢«è°ƒç”¨çš„ *.py æ–‡ä»¶æ‹·è´åˆ°ç”Ÿæˆç›®å½•ï¼›
 
-5¡¢ÐèÒª¸ø¶¨Ä¿±ê¼ì²âµÄÄ£ÐÍÎÄ¼þ£¬²¢ÔÚÏàÓ¦µÄ *.py ÎÄ¼þÖÐÌîÐ´¡£
+5ã€éœ€è¦ç»™å®šç›®æ ‡æ£€æµ‹çš„æ¨¡åž‹æ–‡ä»¶ï¼Œå¹¶åœ¨ç›¸åº”çš„ *.py æ–‡ä»¶ä¸­å¡«å†™ã€‚
 
-ÓÐÎÊÌâ£¬ÇëÁªÏµ£ºyuan_yuanxiang@163.com
+æœ‰é—®é¢˜ï¼Œè¯·è”ç³»ï¼šyuan_yuanxiang@163.com
 
 															2018-4-16
 
-															Ô¬ãäÏé ×¢
+															è¢æ²…ç¥¥ æ³¨
