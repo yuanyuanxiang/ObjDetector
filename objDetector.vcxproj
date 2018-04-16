@@ -198,6 +198,7 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="config.h" />
     <ClInclude Include="CvvImage.h" />
     <ClInclude Include="FileReader.h" />
     <ClInclude Include="objDetector.h" />

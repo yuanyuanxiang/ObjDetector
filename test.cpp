@@ -1,20 +1,8 @@
+#include "config.h"
 #include "python.h"
-
-// python的安装目录
-#define PYTHON_HOME L"D:/Anaconda3/envs/tfgpu"
-
-#define OUTPUT printf
-
-#ifdef _DEBUG
-// 如果没有 Visual Leak Detector ，需注释此行
-//#include "vld.h"
-#endif
-
-#define USING_OPENCV 1
 
 // 包含 numpy 中的头文件arrayobject.h
 #include "..\Lib\site-packages\numpy\core\include\numpy\arrayobject.h"
-using namespace std;
 
 // 初始化 numpy 执行环境，主要是导入包
 // python2.7用void返回类型，python3.0以上用int返回类型
@@ -89,7 +77,8 @@ public:
 				for(int i = 0; i < SizeOfTuple; ++i)
 				{
 					PyArrayObject *ListItem = (PyArrayObject *)PyTuple_GetItem(pRetVal, i);
-					int x1 = ListItem->dimensions[0], x2 = ListItem->dimensions[1], x3 = ListItem->dimensions[2];
+					int x1 = ListItem->dimensions[0], x2 = ListItem->dimensions[1], 
+						x3 = ListItem->dimensions[2];
 					int p[256], num = x1 * x2 * x3 ;
 					memcpy(p, ListItem->data, num * sizeof(int));
 					for (int j = 0; j < num; ++j)
@@ -102,7 +91,8 @@ public:
 						{
 							for (int k = 0; k < x3; ++k)
 								printf("%d\t", 
-								*(int *)(ListItem->data + r * ListItem->strides[0] + c * ListItem->strides[1] + k * ListItem->strides[2]));
+								*(int *)(ListItem->data + r * ListItem->strides[0] + 
+								c * ListItem->strides[1] + k * ListItem->strides[2]));
 							printf("\n");
 						}
 					}
@@ -111,35 +101,6 @@ public:
 		}
 	}
 };
-
-
-#if USING_OPENCV
-
-#include<opencv2/opencv.hpp>   
-#include<opencv/cv.h> 
-using namespace cv;
-
-#define CV_VER "320"
-
-#ifdef _DEBUG
-#define CV_LIB_PATH "D:/opencv/opencv32/lib/Debug/"
-#define CV_LIB_X(LIB, VER) CV_LIB_PATH##"opencv_"##LIB##VER##"d.lib"
-#else
-#define CV_LIB_PATH "D:/opencv/opencv32/lib/Release/"
-#define CV_LIB_X(LIB, VER) CV_LIB_PATH##"opencv_"##LIB##VER##".lib"
-#endif
-
-#define USING_CV_LIB(LIB) CV_LIB_X(LIB, CV_VER)
-
-#pragma comment(lib, USING_CV_LIB("core"))
-#pragma comment(lib, USING_CV_LIB("highgui"))
-#pragma comment(lib, USING_CV_LIB("imgproc"))
-#pragma comment(lib, USING_CV_LIB("video"))
-#pragma comment(lib, USING_CV_LIB("videoio"))
-#pragma comment(lib, USING_CV_LIB("imgcodecs"))
-#pragma comment(lib, USING_CV_LIB("photo"))
-
-#endif
 
 
 int main(int argc, const char *argv[])

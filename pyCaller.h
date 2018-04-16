@@ -2,11 +2,9 @@
 #include <map>
 #include <string>
 #include "StrTransfer.h"
+#include "config.h"
 
 #pragma once
-
-// python的安装目录
-#define PYTHON_HOME L"D:/Anaconda3/envs/tfgpu"
 
 // 最多可检测目标个数
 #define MAX_BOXES_NUM 100
@@ -14,15 +12,8 @@
 // Py_DECREF 导致程序二次运行时崩溃
 #define My_DECREF(p) 
 
-#ifdef _AFX
-#define OUTPUT TRACE
-#else
-#define OUTPUT printf
-#endif
-
 // 包含 numpy 中的头文件arrayobject.h
 #include "..\Lib\site-packages\numpy\core\include\numpy\arrayobject.h"
-using namespace std;
 
 
 enum 

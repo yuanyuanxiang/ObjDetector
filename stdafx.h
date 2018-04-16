@@ -5,19 +5,6 @@
 
 #pragma once
 
-// OpenCV
-#define USING_OPENCV 1
-
-// Tensorflow
-#define USING_TENSORFLOW 1
-
-#ifdef _DEBUG
-// 如果没有 Visual Leak Detector ，需注释此行
-#if !USING_TENSORFLOW
-#include "vld.h"
-#endif
-#endif
-
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN            // 从 Windows 头中排除极少使用的资料
 #endif
@@ -32,10 +19,7 @@
 #include <afxwin.h>         // MFC 核心组件和标准组件
 #include <afxext.h>         // MFC 扩展
 
-
 #include <afxdisp.h>        // MFC 自动化类
-
-
 
 #ifndef _AFX_NO_OLE_SUPPORT
 #include <afxdtctl.h>           // MFC 对 Internet Explorer 4 公共控件的支持
@@ -46,34 +30,7 @@
 
 #include <afxcontrolbars.h>     // 功能区和控件条的 MFC 支持
 
-#if USING_OPENCV
-
-#include<opencv2/opencv.hpp>   
-#include<opencv/cv.h> 
-using namespace cv;
-
-#define CV_VER "320"
-
-#ifdef _DEBUG
-#define CV_LIB_PATH "D:/opencv/opencv32/lib/Debug/"
-#define CV_LIB_X(LIB, VER) CV_LIB_PATH##"opencv_"##LIB##VER##"d.lib"
-#else
-#define CV_LIB_PATH "D:/opencv/opencv32/lib/Release/"
-#define CV_LIB_X(LIB, VER) CV_LIB_PATH##"opencv_"##LIB##VER##".lib"
-#endif
-
-#define USING_CV_LIB(LIB) CV_LIB_X(LIB, CV_VER)
-
-#pragma comment(lib, USING_CV_LIB("core"))
-#pragma comment(lib, USING_CV_LIB("highgui"))
-#pragma comment(lib, USING_CV_LIB("imgproc"))
-#pragma comment(lib, USING_CV_LIB("video"))
-#pragma comment(lib, USING_CV_LIB("videoio"))
-#pragma comment(lib, USING_CV_LIB("imgcodecs"))
-#pragma comment(lib, USING_CV_LIB("photo"))
-
-#endif
-
+#include "config.h"				// OpenCV及Python配置
 
 #ifdef _UNICODE
 #if defined _M_IX86
