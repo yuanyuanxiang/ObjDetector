@@ -1,5 +1,8 @@
 #include "python.h"
 
+// python的安装目录
+#define PYTHON_HOME L"D:/Anaconda3/envs/tfgpu"
+
 #define OUTPUT printf
 
 #ifdef _DEBUG
@@ -39,7 +42,7 @@ public:
 	pyCaller(const char * module_name)
 	{
 		clock_t t = clock();
-		Py_SetPythonHome(L"D:/Anaconda3/envs/tfgpu");
+		Py_SetPythonHome(PYTHON_HOME);
 		Py_Initialize();
 		init_numpy();
 		pModule = PyImport_ImportModule(module_name);

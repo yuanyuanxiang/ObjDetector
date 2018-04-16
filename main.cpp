@@ -51,8 +51,9 @@ int main(int argc, const char *argv[])
 	
 	Mat im = imread(path);
 	const float c = im.cols, r = im.rows;
-	rectangle(im, cvPoint(c * output.p(0, 1), r * output.p(0, 0)), 
-		cvPoint(c * output.p(0, 3), r * output.p(0, 2)), Scalar(255,0,0));
+	if (output.boxes)
+		rectangle(im, cvPoint(c * output.p(0, 1), r * output.p(0, 0)), 
+			cvPoint(c * output.p(0, 3), r * output.p(0, 2)), Scalar(255,0,0));
 	imshow("object detection", im);
 	waitKey(0);
 

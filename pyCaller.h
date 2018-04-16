@@ -5,6 +5,9 @@
 
 #pragma once
 
+// python的安装目录
+#define PYTHON_HOME L"D:/Anaconda3/envs/tfgpu"
+
 // 最多可检测目标个数
 #define MAX_BOXES_NUM 100
 
@@ -42,7 +45,7 @@ protected:
 	int removeref() const { return -- (*ref); }
 	void destroy()			// 销毁
 	{
-		if (ref && 0 == removeref())
+		if (0 == removeref())
 		{
 			SAFE_DELETE_ARRAY(ref);
 			SAFE_DELETE_ARRAY(boxes);
@@ -72,8 +75,8 @@ public:
 			scores = new float[n * MAX_BOXES_NUM]();
 			classes = new float[n * MAX_BOXES_NUM]();
 			counts = new float[n]();
-			ref = new int(1);
 		}
+		ref = new int(1);
 	}
 	~tfOutput()
 	{
@@ -155,7 +158,7 @@ public:
 	pyCaller(const char * module_name)
 	{
 		clock_t t = clock();
-		Py_SetPythonHome(L"D:/Anaconda3/envs/tfgpu");
+		Py_SetPythonHome(PYTHON_HOME);
 		Py_Initialize();
 		init_numpy();
 		pModule = PyImport_ImportModule(module_name);

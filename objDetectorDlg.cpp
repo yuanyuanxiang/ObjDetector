@@ -556,6 +556,8 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 		tfOutput output = m_py->CallFunction("test_src", ArgArray);
 
 		//output.PrintBoxes();
+		if (output.n)
+			return tips;
 		for (int i = 0; i < output.counts[0]; ++i)
 		{
 			float x1 = output.p(i, 1), x2 = output.p(i, 0), 
