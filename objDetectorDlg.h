@@ -74,6 +74,9 @@ protected:
 	// 是否正忙
 	bool IsBusy() const { return STATE_DETECTING == m_nMediaState || STATE_PLAYING == m_nMediaState; }
 
+	// 绘制图像
+	void Paint() { m_reader.Draw(m_hPaintDC, m_rtPaint); }
+
 	// 初始化python调用环境
 	static void InitPyCaller(LPVOID param);
 	// 检测视频

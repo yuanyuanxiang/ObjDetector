@@ -12,9 +12,8 @@ import numpy as np
 from PIL import Image
 
 # 模型位置
-PATH_TO_CKPT = 'D:/GitHub/my_path/vest/result/frozen_inference_graph.pb'
-# 类别信息
-PATH_TO_LABELS = 'D:/GitHub/my_path/vest/vest_label_map.pbtxt'
+PATH_TO_CKPT = 'frozen_inference_graph.pb'
+
 # 分类数
 NUM_CLASSES = 1
 

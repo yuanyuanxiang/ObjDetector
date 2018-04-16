@@ -99,6 +99,10 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py
+copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\frozen_inference_graph.pb</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -125,6 +129,10 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <PostBuildEvent>
+      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py
+copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\frozen_inference_graph.pb</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

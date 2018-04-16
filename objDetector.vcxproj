@@ -134,7 +134,8 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py</Command>
+      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py
+copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\frozen_inference_graph.pb</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -192,7 +193,8 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py</Command>
+      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py
+copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\frozen_inference_graph.pb</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

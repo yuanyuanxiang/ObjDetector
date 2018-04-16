@@ -122,12 +122,13 @@ void CobjDetectorDlg::PlayVideo(LPVOID param)
 		}
 		if (pThis->m_nThreadState[_DetectVideo] == Thread_Stop)
 			break;
+		pThis->Paint();
 		int nTime = 40 - (clock() - t);
 		Sleep(nTime > 0 ? nTime : 40);
 	} while (!pThis->m_bExit);
 	timeEndPeriod(1);
 	pThis->m_reader.Open(pThis->m_strFile);
-	pThis->Invalidate(TRUE);
+	pThis->Paint();
 	pThis->m_nMediaState = STATE_DONOTHING;
 	pThis->m_nThreadState[_PlayVideo] = Thread_Stop;
 	OutputDebugStringA("======> PlayVideo Stop.\n");
@@ -294,7 +295,7 @@ void CobjDetectorDlg::OnPaint()
 	{
 		// 此函数过于频繁使得程序空闲时CPU也很高，因此加上Sleep
 		Sleep(40);
-		m_reader.Draw(m_hPaintDC, m_rtPaint);
+		Paint();
 	}
 }
 
@@ -360,7 +361,7 @@ void CobjDetectorDlg::OnObjDetect()
 	{
 		cv::Mat m = m_reader.Front();
 		DoDetect(m);
-		m_reader.Draw(m_hPaintDC, m_rtPaint);
+		Paint();
 	}else if (m_reader.IsVideo())
 	{
 		if (STATE_DONOTHING == m_nMediaState)
@@ -556,7 +557,7 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 		tfOutput output = m_py->CallFunction("test_src", ArgArray);
 
 		//output.PrintBoxes();
-		if (output.n)
+		if (0 == output.n)
 			return tips;
 		for (int i = 0; i < output.counts[0]; ++i)
 		{
