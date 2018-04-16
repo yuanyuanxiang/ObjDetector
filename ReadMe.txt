@@ -9,6 +9,15 @@
 #ShowImage
 一个C++调用Python返回numpy array的例子。
 
+#编译前置条件
+0、已训练好的模型（frozen_inference_graph.pb）
+1、安装python3.5 64位，安装OpenCV 64位
+2、pip install numpy
+3、pip install pillow
+4、pip install matplotlib
+5、pip install tensorflow
+6、其他包视情况而定
+
 #编译注意事项
 
 1、为项目添加Python的附加包含目录及库目录，复制pythonXX.lib的备份，并重命名为pythonXX_d.lib;
