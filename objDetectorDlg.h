@@ -7,13 +7,34 @@
 #include "pyCaller.h"
 #include "FileReader.h"
 
+// 矩形框颜色
+#define RECT_COLOR CV_RGB(0, 0, 255)
+// 文字颜色
+#define TEXT_COLOR CV_RGB(0, 255, 0)
+// 线宽度
+#define THICK_NESS 2
+// 采集密度
+#define DETECT_RATE 6
+
+extern labelMap g_map; // 类别信息
+
 // 图像标注
 struct Tips
 {
-	float score;
-	cv::Rect rect;
+	int class_id;		// 类别ID
+	float score;		// 得分
+	cv::Rect rect;		// 矩形框
 	Tips() { memset(this, 0, sizeof(Tips)); }
-	Tips(const cv::Rect &rt, float s) : score(s), rect(rt) { }
+	Tips(const cv::Rect &rt, float s, int id = 1) : class_id(id), score(s), rect(rt) { }
+	// 为图像添加注释
+	void AddTips(cv::Mat &m) const
+	{
+		cv::rectangle(m, rect, RECT_COLOR, THICK_NESS);
+		char text[256];
+		sprintf_s(text, "%s:%.3f", g_map.getItemName(class_id), score);
+		cv::putText(m, text, cvPoint(rect.x, rect.y), 
+			CV_FONT_HERSHEY_SIMPLEX, 1.0, TEXT_COLOR, THICK_NESS);
+	}
 };
 
 // 媒体状态
@@ -54,6 +75,8 @@ protected:
 
 	char m_strFile[_MAX_PATH];		// 文件路径
 
+	char m_strPath[_MAX_PATH];		// 当前路径
+
 	CFileReader m_reader;			// 文件读取器
 
 	pyCaller *m_py;					// python调用者
@@ -68,6 +91,8 @@ protected:
 
 	int m_nThreadState[_Max];		// 线程状态
 
+	double m_fThresh;				// 图像阈值
+
 	// 是否正在检测
 	bool IsDetecting() const { return STATE_DETECTING == m_nMediaState; }
 
@@ -76,6 +101,9 @@ protected:
 
 	// 绘制图像
 	void Paint() { m_reader.Draw(m_hPaintDC, m_rtPaint); }
+
+	// 保存图像
+	void Save(const cv::Mat &m, int class_id);
 
 	// 初始化python调用环境
 	static void InitPyCaller(LPVOID param);
@@ -116,4 +144,6 @@ public:
 	afx_msg void OnUpdateEditStop(CCmdUI *pCmdUI);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnFileIpc();
+	afx_msg void OnUpdateFileIpc(CCmdUI *pCmdUI);
 };

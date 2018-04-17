@@ -1,3 +1,7 @@
+// 【注意】请将OpenCV的包含目录、python包含目录添加到项目附加包含目录
+// 将python的库目录添加到项目的附加库目录
+// 然后根据实际情况修改本文件。
+
 
 //////////////////////////////////////////////////////////////////////////
 // OpenCV 配置
@@ -11,28 +15,17 @@
 #define CV_LIB_X(LIB, VER) CV_LIB_PATH##"opencv_"##LIB##VER##".lib"
 #endif
 
-#define USING_CV_LIB(LIB) CV_LIB_X(LIB, CV_VER)
+#define USING_CV_LIB(LIB) CV_LIB_X(LIB, CV_VER) // 使用CV的库
 
 
 //////////////////////////////////////////////////////////////////////////
 // Python 配置
 #define PYTHON_HOME L"D:/Anaconda3/envs/tfgpu"
-// Tensorflow
-#define USING_TENSORFLOW 1
 
 
 //////////////////////////////////////////////////////////////////////////
-// VDL 配置
-#ifdef _DEBUG
-#if !USING_TENSORFLOW
-#include "vld.h" // 如果没有 Visual Leak Detector ，需注释此行
-#endif
-#endif
-
-
-//////////////////////////////////////////////////////////////////////////
-#include<opencv2/opencv.hpp>   
-#include<opencv/cv.h> 
+#include "opencv2/opencv.hpp" 
+#include "opencv/cv.h"
 using namespace cv;
 
 #pragma comment(lib, USING_CV_LIB("core"))
@@ -48,3 +41,7 @@ using namespace cv;
 #else
 #define OUTPUT printf
 #endif
+
+
+// 是否支持IPC
+#define SUPPORT_IPC 1

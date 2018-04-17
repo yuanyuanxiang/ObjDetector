@@ -120,6 +120,33 @@ public:
 	}
 };
 
+struct Item 
+{
+	int id;				// 类别ID(从1开始)
+	char name[64];		// 类别名称
+	Item() { id = 0; memset(name, 0, sizeof(name)); }
+	Item(const char *_name, int _id) { strcpy_s(name, _name); id = _id; }
+};
+
+/************************************************************************
+* @class LabelMap
+* @brief 类别标签
+************************************************************************/
+class labelMap
+{
+public:
+	int num;
+	Item *items;
+	labelMap() { num = 0; items = 0; }
+	~labelMap() { delete [] items; }
+	// 创建类别标签
+	void Create(int n) { num = max(n, 1); items = new Item[num]; }
+	// 插入新的类别
+	void InsertItem(const Item & it) { if(it.id > 0) items[it.id - 1] = it; }
+	// 根据ID获取类名
+	const char* getItemName(int id) const { return id > 0 ? items[id - 1].name : ""; }
+};
+
 /************************************************************************
 * @class pyCaller
 * @brief python调用类: 适用于对图片、视频进行识别

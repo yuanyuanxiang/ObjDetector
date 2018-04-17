@@ -6,6 +6,8 @@
 #include "objDetector.h"
 #include "objDetectorDlg.h"
 #include "afxdialogex.h"
+#include "IPCConfigDlg.h"
+#include <direct.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -13,18 +15,26 @@
 
 #define EDGE 0
 
+labelMap g_map;
+
 // 给图像添加矩形并标注文字
 void AddRectanges(cv::Mat &m, const std::vector<Tips> &tips)
 {
-	for (int i = 0; i < tips.size(); ++i)
-	{
-		const cv::Rect &rect = tips[i].rect;
-		rectangle(m, rect, cv::Scalar(255,0,0));
-		char text[64];
-		sprintf_s(text, "%.6f", tips[i].score);
-		cv::Point Origin(rect.x, rect.y);
-		cv::putText(m, text, Origin, CV_FONT_HERSHEY_SIMPLEX, 1.0, CV_RGB(255,0,0));
-	}
+	for (std::vector<Tips>::const_iterator p = tips.begin(); 
+		p != tips.end(); ++p)
+		p->AddTips(m);
+}
+
+
+// 保存图像
+void CobjDetectorDlg::Save(const cv::Mat &m, int class_id)
+{
+	time_t timep = time(NULL);
+    char tmp[64];
+    strftime(tmp, sizeof(tmp), "%Y-%m-%d %H%M%S.jpg",localtime(&timep));
+	char path[_MAX_PATH];
+	sprintf_s(path, "%s\\object detection\\%s\\%s", m_strPath, g_map.getItemName(class_id), tmp);
+	cv::imwrite(path, m);
 }
 
 
@@ -51,6 +61,7 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 	_beginthread(&PlayVideo, 0, param);
 	std::vector<Tips> tips;
 	int count = 0, flag = 0;
+	const int K = min(DETECT_RATE, 4);
 	do 
 	{
 		cv::Mat m = pThis->m_reader.PlayVideo();
@@ -60,12 +71,12 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 		switch (pThis->m_nMediaState)
 		{
 		case STATE_DETECTING:
-			if ( 0 == (count % 6) )
+			if ( 0 == (count % DETECT_RATE) )
 			{
 				flag = 0;
 				tips = pThis->DoDetect(m);
 			}
-			else if (++flag <= 4)// 使矩形框停留5 * 40 = 200ms
+			else if (++flag < K)// 使矩形框停留 K * 40 ms
 				AddRectanges(m, tips);
 			break;
 		case STATE_PAUSE:
@@ -175,6 +186,8 @@ CobjDetectorDlg::CobjDetectorDlg(CWnd* pParent /*=NULL*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	memset(m_strFile, 0, _MAX_PATH);
+	memset(m_strPath, 0, _MAX_PATH);
+	m_fThresh = 0.8;
 	m_bOK = false;
 	m_nMediaState = STATE_DONOTHING;
 	m_bExit = false;
@@ -211,6 +224,8 @@ BEGIN_MESSAGE_MAP(CobjDetectorDlg, CDialogEx)
 	ON_COMMAND(ID_EDIT_STOP, &CobjDetectorDlg::OnEditStop)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_STOP, &CobjDetectorDlg::OnUpdateEditStop)
 	ON_WM_SIZE()
+	ON_COMMAND(ID_FILE_IPC, &CobjDetectorDlg::OnFileIpc)
+	ON_UPDATE_COMMAND_UI(ID_FILE_IPC, &CobjDetectorDlg::OnUpdateFileIpc)
 END_MESSAGE_MAP()
 
 
@@ -251,6 +266,36 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	CDC* pDC = m_picCtrl.GetDC();
 	m_picCtrl.GetClientRect(&m_rtPaint);
 	m_hPaintDC = pDC->GetSafeHdc();
+
+	// 读取类别信息
+	char path[_MAX_PATH], *p = path, obj[_MAX_PATH];;
+	GetModuleFileNameA(NULL, path, _MAX_PATH);
+	while('\0' != *p) ++p;
+	while('\\' != *p) --p;
+	*p = '\0';
+	strcpy_s(m_strPath, path);
+	sprintf_s(obj, "%s\\object detection", path);
+	strcpy(p, "\\label_map.ini");
+	int n = GetPrivateProfileIntA("item", "class_num", 1, path);
+	g_map.Create(n);
+	if (-1 == _access(obj, 0))
+		_mkdir(obj);
+	for (int i = 0; i < n; ++i)
+	{
+		char temp[_MAX_PATH], name[_MAX_PATH];
+		sprintf_s(temp, "class%d", i+1);
+		GetPrivateProfileStringA("item", temp, "unknown", name, _MAX_PATH, path);
+		sprintf_s(temp, "class%d_id", i+1);
+		int id = GetPrivateProfileIntA("item", temp, 1, path);
+		g_map.InsertItem(Item(name, id));
+		sprintf_s(temp, "%s\\%s", obj, name);
+		if (-1 == _access(temp, 0))
+			_mkdir(temp);
+	}
+	// 读取settings
+	sprintf_s(path, "%s\\settings.ini", m_strPath);
+	GetPrivateProfileStringA("settings", "threshold", "1.0", obj, _MAX_PATH, path);
+	m_fThresh = atof(obj);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -322,7 +367,7 @@ void CobjDetectorDlg::OnFileOpen()
 		strcpy_s(m_strFile, W2A(strFile));
 		if (!m_reader.Open(m_strFile))
 		{
-			TRACE("打开文件失败.\n");
+			TRACE("======> 打开文件失败.\n");
 		}
 		Invalidate(TRUE);
 	}
@@ -334,7 +379,7 @@ void CobjDetectorDlg::OnDestroy()
 	CDialogEx::OnDestroy();
 
 	m_bExit = true;
-
+	m_nMediaState = STATE_DONOTHING;
 	while (m_nThreadState[_InitPyCaller] || m_nThreadState[_DetectVideo] || 
 		m_nThreadState[_PlayVideo] || IsDetecting())
 		Sleep(100);
@@ -348,7 +393,7 @@ void CobjDetectorDlg::OnDestroy()
 
 void CobjDetectorDlg::OnObjDetect()
 {
-	if (m_strFile[0] == '\0' || m_reader.IsEmpty())
+	if (m_reader.IsEmpty())
 		return;
 	
 	if(m_py && !m_bOK)
@@ -537,7 +582,7 @@ void CobjDetectorDlg::OnEditStop()
 
 void CobjDetectorDlg::OnUpdateEditStop(CCmdUI *pCmdUI)
 {
-	pCmdUI->Enable(m_reader.IsVideo() && STATE_DONOTHING != m_nMediaState);
+	pCmdUI->Enable(m_reader.IsFile() && STATE_DONOTHING != m_nMediaState);
 }
 
 
@@ -559,19 +604,19 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 		//output.PrintBoxes();
 		if (0 == output.n)
 			return tips;
+		const float c = m.cols; // 列数
+		const float r = m.rows; // 行数
 		for (int i = 0; i < output.counts[0]; ++i)
 		{
 			float x1 = output.p(i, 1), x2 = output.p(i, 0), 
-				x3 = output.p(i, 3), x4 = output.p(i, 2), s = output.scores[i];
+				x3 = output.p(i, 3), x4 = output.p(i, 2);
 
-			const float c = m.cols, r = m.rows;
-			cv::Point Origin(c * x1, r * x2);
-			cv::Rect rect(Origin, cvPoint(c * x3, r * x4));
-			rectangle(m, rect, cv::Scalar(255,0,0));
-			tips.push_back(Tips(rect, s));
-			char text[64];
-			sprintf_s(text, "%.6f", s);
-			cv::putText(m, text, Origin, CV_FONT_HERSHEY_SIMPLEX, 1.0, CV_RGB(255,0,0));
+			cv::Rect rect(CvPoint(c * x1, r * x2), CvPoint(c * x3, r * x4));
+			Tips tip(rect, output.scores[i], output.classes[i]);
+			tip.AddTips(m);
+			if (output.scores[i] > m_fThresh)
+				Save(m, output.classes[i]);// 保存
+			tips.push_back(tip);
 		}
 	}
 	return tips;
@@ -601,4 +646,35 @@ void CobjDetectorDlg::OnSize(UINT nType, int cx, int cy)
 			rt.right - EDGE, rt.bottom - EDGE), TRUE);
 		m_picCtrl.GetClientRect(&m_rtPaint);
 	}
+}
+
+
+void CobjDetectorDlg::OnFileIpc()
+{
+	CIPCConfigDlg dlg;
+	if (IDOK == dlg.DoModal())
+	{
+		IPCamInfo info;
+		USES_CONVERSION;
+		strcpy_s(info.ip, W2A(dlg.m_strAddress));
+		info.port = dlg.m_nPort;
+		strcpy_s(info.user, W2A(dlg.m_strUser));
+		strcpy_s(info.pwd, W2A(dlg.m_strPassword));
+		HWND hWnd = GetDlgItem(IDC_IPC_CAPTURE)->GetSafeHwnd();
+		if(!m_reader.OpenIPCamera(info, hWnd))
+		{
+			TRACE("======> 打开IPC失败.\n");
+		}
+		else{
+			m_strFile[0] = '\0';
+			OnEditPlay();
+		}
+		Invalidate(TRUE);
+	}
+}
+
+
+void CobjDetectorDlg::OnUpdateFileIpc(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(!IsDetecting());
 }

@@ -5,7 +5,7 @@
 CFileReader::CFileReader(void)
 {
 	m_nType = TYPE_IMAGE;
-	m_nMaxBuf = 100;
+	m_nMaxBuf = 25;
 	memset(m_nDims, 0, 3 * sizeof(int));
 	InitializeCriticalSection(&m_cs);
 }
@@ -48,13 +48,56 @@ bool CFileReader::Open(const char *path)
 }
 
 
+bool CFileReader::OpenIPCamera(const IPCamInfo &cam, HWND hWnd)
+{
+	try
+	{
+		Clear();
+		m_hWnd = hWnd;
+		m_nType = TYPE_UNKNOWN;
+		cv::Mat m;
+		if (m_IPC.LoginCamera(cam, hWnd) >= 0)
+		{
+			m = m_IPC.GetCapture();
+			m_nType = TYPE_IPC;
+		}
+		else
+		{
+			try {
+				if (m_Cap.open(NULL) ? m_Cap.read(m) : false)
+					m_nType = TYPE_CAMERA;
+			}catch(...){
+				return false;
+			}
+		}
+		if (TYPE_UNKNOWN != m_nType)
+		{
+			m_nDims[0] = m.rows;
+			m_nDims[1] = m.cols;
+			m_nDims[2] = m.step[1];
+			PushImage(m);
+			return true;
+		}
+	}catch(cv::Exception &e)
+	{
+	}
+	return false;
+}
+
+
 cv::Mat  CFileReader::PlayVideo()
 {
 	cv::Mat m;
 	try
 	{
-		if ((TYPE_VIDEO == m_nType) ? m_Cap.read(m) : false)
-			return m;
+		if (TYPE_VIDEO == m_nType || TYPE_CAMERA == m_nType)
+		{
+			if (m_Cap.read(m))
+				return m;
+		}
+		else if (TYPE_IPC == m_nType)
+			return m_IPC.GetCapture();
+
 	}catch(...){
 	}
 	return m;
@@ -80,8 +123,6 @@ int CFileReader::PopImage() // 返回当前帧数量
 	bool bEmpty = m_Buffer.empty();
 	if (!bEmpty)
 		m_Buffer.pop();
-	else 
-		OutputDebugStringA("======> PopImage()缓存不足! \n");
 	int nSize = m_Buffer.size();
 	Unlock();
 	return nSize;
@@ -114,6 +155,7 @@ void CFileReader::Clear()
 		m_Buffer.pop();
 	Unlock();
 	m_nType = TYPE_UNKNOWN;
+	m_Cap.release();
 	memset(m_nDims, 0, 3 * sizeof(int));
 }
 

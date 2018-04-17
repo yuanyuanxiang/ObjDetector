@@ -5,6 +5,17 @@
 
 #pragma once
 
+// Tensorflow
+#define USING_TENSORFLOW 1
+
+//////////////////////////////////////////////////////////////////////////
+// VDL 配置
+#ifdef _DEBUG
+#if !USING_TENSORFLOW
+#include "vld.h" // 如果没有 Visual Leak Detector ，需注释此行
+#endif
+#endif
+
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN            // 从 Windows 头中排除极少使用的资料
 #endif

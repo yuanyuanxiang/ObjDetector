@@ -201,6 +201,8 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
     <ClInclude Include="config.h" />
     <ClInclude Include="CvvImage.h" />
     <ClInclude Include="FileReader.h" />
+    <ClInclude Include="IPCamVisitor.h" />
+    <ClInclude Include="IPCConfigDlg.h" />
     <ClInclude Include="objDetector.h" />
     <ClInclude Include="objDetectorDlg.h" />
     <ClInclude Include="pyCaller.h" />
@@ -212,6 +214,8 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
   <ItemGroup>
     <ClCompile Include="CvvImage.cpp" />
     <ClCompile Include="FileReader.cpp" />
+    <ClCompile Include="IPCamVisitor.cpp" />
+    <ClCompile Include="IPCConfigDlg.cpp" />
     <ClCompile Include="objDetector.cpp" />
     <ClCompile Include="objDetectorDlg.cpp" />
     <ClCompile Include="pyCaller.cpp" />

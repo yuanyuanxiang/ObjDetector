@@ -130,7 +130,7 @@ void  CvvImage::CopyOf( IplImage* img, int desired_color )
 		if( color < 0 )
 			color = img->nChannels > 1;
 		if( Create( size.width, size.height,
-			(!color ? 1 : img->nChannels > 1 ? img->nChannels : 3)*8,
+			(!color ? 1 : img->nChannels > 1 ? 3 : 3)*8, // 4通道图像在CopyOf时报错
 			img->origin ))
 		{
 			cvConvertImage( img, m_img, 0 );
