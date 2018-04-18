@@ -278,6 +278,7 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	strcpy(p, "\\label_map.ini");
 	int n = GetPrivateProfileIntA("item", "class_num", 1, path);
 	g_map.Create(n);
+	m_tf = tfOutput(max(n, 1));
 	if (-1 == _access(obj, 0))
 		_mkdir(obj);
 	for (int i = 0; i < n; ++i)
@@ -599,24 +600,28 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 		// 同样定义大小与Python函数参数个数一致的PyTuple对象
 		PyObject *ArgArray = PyTuple_New(1);
 		PyTuple_SetItem(ArgArray, 0, PyArray); 
-		tfOutput output = m_py->CallFunction("test_src", ArgArray);
+		m_tf = m_py->CallFunction("test_src", ArgArray, &m_tf);
 
 		//output.PrintBoxes();
-		if (0 == output.n)
+		if (0 == m_tf.n)
 			return tips;
 		const float c = m.cols; // 列数
 		const float r = m.rows; // 行数
-		for (int i = 0; i < output.counts[0]; ++i)
+		for (int k = 0; k < g_map.num; ++k)
 		{
-			float x1 = output.p(i, 1), x2 = output.p(i, 0), 
-				x3 = output.p(i, 3), x4 = output.p(i, 2);
+			int next = 100 * k;
+			for (int i = 0; i < m_tf.counts[k]; ++i)
+			{
+				float x1 = m_tf.p(i, 1, k), x2 = m_tf.p(i, 0, k), 
+					x3 = m_tf.p(i, 3, k), x4 = m_tf.p(i, 2, k);
 
-			cv::Rect rect(CvPoint(c * x1, r * x2), CvPoint(c * x3, r * x4));
-			Tips tip(rect, output.scores[i], output.classes[i]);
-			tip.AddTips(m);
-			if (output.scores[i] > m_fThresh)
-				Save(m, output.classes[i]);// 保存
-			tips.push_back(tip);
+				cv::Rect rect(CvPoint(c * x1, r * x2), CvPoint(c * x3, r * x4));
+				Tips tip(rect, m_tf.scores[next + i], m_tf.classes[next + i]);
+				tip.AddTips(m);
+				if (m_tf.scores[next + i] > m_fThresh)
+					Save(m, m_tf.classes[next + i]);// 保存
+				tips.push_back(tip);
+			}
 		}
 	}
 	return tips;

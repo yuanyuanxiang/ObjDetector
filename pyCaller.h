@@ -27,6 +27,8 @@ enum
 /************************************************************************
 * @class tfOutput
 * @brief tensorflow模型输出的参数结构
+* @note 由于该结构需要被频繁使用, 故该类通过引用计数ref管理内存, \n 
+    如有内存泄漏, 请联系本人
 ************************************************************************/
 class tfOutput
 {
@@ -38,6 +40,8 @@ protected:
 	{
 		if (0 == removeref())
 		{
+			if (n)
+				OUTPUT("======> 为tfOutput回收内存[0x%x].\n", ref);
 			SAFE_DELETE_ARRAY(ref);
 			SAFE_DELETE_ARRAY(boxes);
 			SAFE_DELETE_ARRAY(scores);
@@ -60,14 +64,15 @@ public:
 	{
 		memset(this, 0, sizeof(tfOutput));
 		n = class_num;
+		ref = new int(1);
 		if (n)
 		{
+			OUTPUT("======> 为tfOutput分配内存[0x%x].\n", ref);
 			boxes = new float[n * MAX_BOXES_NUM * 4]();
 			scores = new float[n * MAX_BOXES_NUM]();
 			classes = new float[n * MAX_BOXES_NUM]();
 			counts = new float[n]();
 		}
-		ref = new int(1);
 	}
 	~tfOutput()
 	{
@@ -85,16 +90,19 @@ public:
 	}
 	tfOutput operator = (const tfOutput &o)
 	{
-		// 先清理本对象
-		destroy();
-		// this被o代替
-		ref = o.ref;
-		n = o.n;
-		boxes = o.boxes;
-		scores = o.scores;
-		classes = o.classes;
-		counts = o.counts;
-		addref();
+		if (this != &o)// 防止自己赋值给自己
+		{
+			// 先清理本对象
+			destroy();
+			// this被o代替
+			ref = o.ref;
+			n = o.n;
+			boxes = o.boxes;
+			scores = o.scores;
+			classes = o.classes;
+			counts = o.counts;
+			addref();
+		}
 		return *this;
 	}
 
@@ -167,7 +175,7 @@ private:
 	}
 
 	// 解析python结果
-	tfOutput ParseResult(PyObject *pRetVal);
+	tfOutput ParseResult(PyObject *pRetVal, tfOutput *tf);
 
 public:
 	/**
@@ -236,9 +244,10 @@ public:
 	/**
 	* @brief 调用python脚本中的指定函数
 	*/
-	tfOutput CallFunction(const char * func_name, const char *arg)
+	tfOutput CallFunction(const char * func_name, const char *arg, tfOutput *tf = NULL)
 	{
 		tfOutput out;
+		out = tf ? *tf : out;
 		PyObject *pFunc = pFunMap[func_name];
 		if (pFunc)
 		{
@@ -250,23 +259,24 @@ public:
 			PyObject* pRetVal = PyEval_CallObject(pFunc, pArg);
 			if (NULL == pRetVal)
 				return out;
-			out = ParseResult(pRetVal);
+			out = ParseResult(pRetVal, tf);
 		}
 		return out;
 	}
 	/**
 	* @brief 调用python脚本中的指定函数
 	*/
-	tfOutput CallFunction(const char * func_name, PyObject *arg)
+	tfOutput CallFunction(const char * func_name, PyObject *arg, tfOutput *tf = NULL)
 	{
 		tfOutput out;
+		out = tf ? *tf : out;
 		PyObject *pFunc = pFunMap[func_name];
 		if (pFunc)
 		{
  			PyObject* pRetVal = PyEval_CallObject(pFunc, arg);
 			if (NULL == pRetVal)
 				return out;
-			out = ParseResult(pRetVal);
+			out = ParseResult(pRetVal, tf);
 		}
 		return out;
 	}

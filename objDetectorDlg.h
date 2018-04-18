@@ -79,6 +79,8 @@ protected:
 
 	CFileReader m_reader;			// 文件读取器
 
+	tfOutput m_tf;					// TensorFlow返回值
+
 	pyCaller *m_py;					// python调用者
 
 	bool m_bExit;					// 是否退出程序

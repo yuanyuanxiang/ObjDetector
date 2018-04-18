@@ -1,13 +1,15 @@
 #include "pyCaller.h"
 
 
-tfOutput pyCaller::ParseResult(PyObject *pRetVal)
+tfOutput pyCaller::ParseResult(PyObject *pRetVal, tfOutput *tf)
 {
 	tfOutput out;
+	out = tf ? *tf : out;
 	if (PyTuple_Check(pRetVal))
 	{
 		PyArrayObject *temp = (PyArrayObject *)PyTuple_GetItem(pRetVal, 0);
-		out = tfOutput(temp->dimensions[0]);
+		if (NULL == tf)
+			out = tfOutput(temp->dimensions[0]);
 		My_DECREF(temp);
 
 		int nSize = PyTuple_Size(pRetVal);
