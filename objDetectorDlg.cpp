@@ -62,12 +62,18 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 	std::vector<Tips> tips;
 	int count = 0, flag = 0;
 	const int K = min(DETECT_RATE, 4);
+	clock_t last = clock(), cur;
 	do 
 	{
+		cur = last;
 		cv::Mat m = pThis->m_reader.PlayVideo();
-		if (m.empty()) // 第1帧未检测
-			break;
-		++count;
+		if (m.empty())
+		{
+			if (pThis->m_reader.IsFile())
+				break;
+			Sleep(10);
+			continue;
+		}
 		switch (pThis->m_nMediaState)
 		{
 		case STATE_DETECTING:
@@ -90,8 +96,15 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 		}
 		if (STATE_DONOTHING == pThis->m_nMediaState)
 			break;
-		while (!pThis->m_reader.PushImage(m))
+		if (!pThis->m_reader.PushImage(m))
+		{
 			Sleep(10);
+			continue;
+		}
+		++count;
+		last = clock();
+		if (last - cur > 45)
+			/*OUTPUT("======> DetectVideo time = %d, i = %d\n", last - cur, count)*/;
 	} while (!pThis->m_bExit);
 	timeEndPeriod(1);
 	pThis->m_nThreadState[_DetectVideo] = Thread_Stop;
@@ -107,9 +120,10 @@ void CobjDetectorDlg::PlayVideo(LPVOID param)
 	timeBeginPeriod(1);
 	while(pThis->m_nThreadState[_DetectVideo] && pThis->m_reader.IsBuffering())
 		Sleep(10);
+	clock_t last = clock(), cur;
 	do
 	{
-		clock_t t = clock();
+		cur = last;
 		switch (pThis->m_nMediaState)
 		{
 		case STATE_DETECTING:
@@ -125,21 +139,24 @@ void CobjDetectorDlg::PlayVideo(LPVOID param)
 		}
 		if (STATE_DONOTHING == pThis->m_nMediaState)
 			break;
-		while (pThis->m_reader.PopImage() == 0)
+		cv::Mat m = pThis->m_reader.PopImage();
+		if (m.empty())
 		{
-			if (pThis->m_nThreadState[_DetectVideo] == Thread_Stop)
-				break;
 			Sleep(10);
+			if (Thread_Stop == pThis->m_nThreadState[_DetectVideo])
+				break;
+			continue;
 		}
-		if (pThis->m_nThreadState[_DetectVideo] == Thread_Stop)
-			break;
-		pThis->Paint();
-		int nTime = 40 - (clock() - t);
-		Sleep(nTime > 0 ? nTime : 40);
+		pThis->Paint(m);
+		int nTime = 40 - (clock() - cur);
+		Sleep(nTime > 0 ? nTime : 0);
+		last = clock();
+		if (last - cur > 45)
+			OUTPUT("======> PlayVideo time = %d\n", last - cur);
 	} while (!pThis->m_bExit);
 	timeEndPeriod(1);
 	pThis->m_reader.Open(pThis->m_strFile);
-	pThis->Paint();
+	pThis->Invalidate(TRUE);
 	pThis->m_nMediaState = STATE_DONOTHING;
 	pThis->m_nThreadState[_PlayVideo] = Thread_Stop;
 	OutputDebugStringA("======> PlayVideo Stop.\n");
@@ -187,7 +204,8 @@ CobjDetectorDlg::CobjDetectorDlg(CWnd* pParent /*=NULL*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	memset(m_strFile, 0, _MAX_PATH);
 	memset(m_strPath, 0, _MAX_PATH);
-	m_fThresh = 0.8;
+	m_fThreshSave = 0.8;
+	m_fThreshShow = 0.8;
 	m_bOK = false;
 	m_nMediaState = STATE_DONOTHING;
 	m_bExit = false;
@@ -226,6 +244,7 @@ BEGIN_MESSAGE_MAP(CobjDetectorDlg, CDialogEx)
 	ON_WM_SIZE()
 	ON_COMMAND(ID_FILE_IPC, &CobjDetectorDlg::OnFileIpc)
 	ON_UPDATE_COMMAND_UI(ID_FILE_IPC, &CobjDetectorDlg::OnUpdateFileIpc)
+	ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 
@@ -295,8 +314,13 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	}
 	// 读取settings
 	sprintf_s(path, "%s\\settings.ini", m_strPath);
-	GetPrivateProfileStringA("settings", "threshold", "1.0", obj, _MAX_PATH, path);
-	m_fThresh = atof(obj);
+	GetPrivateProfileStringA("settings", "thresh_show", "0.8", obj, _MAX_PATH, path);
+	m_fThreshShow = atof(obj);
+	GetPrivateProfileStringA("settings", "thresh_save", "1.0", obj, _MAX_PATH, path);
+	m_fThreshSave = atof(obj);
+	m_fThreshSave = max(m_fThreshSave, m_fThreshShow);
+
+	GetDlgItem(IDC_IPC_CAPTURE)->ShowWindow(SW_HIDE);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -340,10 +364,27 @@ void CobjDetectorDlg::OnPaint()
 	else
 	{
 		// 此函数过于频繁使得程序空闲时CPU也很高，因此加上Sleep
-		Sleep(40);
-		Paint();
+		if (STATE_DETECTING != m_nMediaState)
+			Paint(m_reader.Front());
 	}
 }
+
+
+// 绘制图像
+void CobjDetectorDlg::Paint(const cv::Mat &m)
+{
+	if (!m.empty() && m_rtPaint.Width() && m_rtPaint.Height())
+	{
+		clock_t tm = clock();
+		IplImage t = IplImage(m);
+		m_Image.CopyOf(&t, 1);
+		m_Image.DrawToHDC(m_hPaintDC, m_rtPaint);
+		tm = clock() - tm;
+		if (tm > 40)
+			OUTPUT("======> DrawToHDC using time = %d\n", tm);
+	}
+}
+
 
 //当用户拖动最小化窗口时系统调用此函数取得光标
 //显示。
@@ -360,7 +401,7 @@ void CobjDetectorDlg::OnFileOpen()
 	CFileDialog dlg(TRUE);
 	if (IDOK == dlg.DoModal())
 	{
-		m_nMediaState =STATE_DONOTHING;
+		m_nMediaState = STATE_DONOTHING;
 		while(m_nThreadState[_PlayVideo] || m_nThreadState[_DetectVideo])
 			Sleep(10);
 		CString strFile = dlg.GetPathName();
@@ -383,7 +424,7 @@ void CobjDetectorDlg::OnDestroy()
 	m_nMediaState = STATE_DONOTHING;
 	while (m_nThreadState[_InitPyCaller] || m_nThreadState[_DetectVideo] || 
 		m_nThreadState[_PlayVideo] || IsDetecting())
-		Sleep(100);
+		Sleep(10);
 
 	if (m_py)
 		delete m_py;
@@ -394,9 +435,6 @@ void CobjDetectorDlg::OnDestroy()
 
 void CobjDetectorDlg::OnObjDetect()
 {
-	if (m_reader.IsEmpty())
-		return;
-	
 	if(m_py && !m_bOK)
 		return;
 
@@ -407,12 +445,13 @@ void CobjDetectorDlg::OnObjDetect()
 	{
 		cv::Mat m = m_reader.Front();
 		DoDetect(m);
-		Paint();
+		Invalidate(TRUE);
 	}else if (m_reader.IsVideo())
 	{
 		if (STATE_DONOTHING == m_nMediaState)
 		{
 			m_nMediaState = STATE_DETECTING;
+			m_reader.StartThread();
 			_beginthread(&DetectVideo, 0, this);
 		}
 		else if(STATE_PLAYING == m_nMediaState)
@@ -428,6 +467,7 @@ void CobjDetectorDlg::OnFileClose()
 	memset(m_strFile, 0, _MAX_PATH);
 	m_reader.Clear();
 	Invalidate(TRUE);
+	m_nMediaState = STATE_DONOTHING;
 }
 
 
@@ -524,13 +564,13 @@ void CobjDetectorDlg::OnUpdateFileOpen(CCmdUI *pCmdUI)
 
 void CobjDetectorDlg::OnUpdateObjDetect(CCmdUI *pCmdUI)
 {
-	pCmdUI->Enable(m_bOK && !m_reader.IsEmpty() && !IsDetecting());
+	pCmdUI->Enable(m_bOK && STATE_DETECTING != m_nMediaState);
 }
 
 
 void CobjDetectorDlg::OnUpdateFileClose(CCmdUI *pCmdUI)
 {
-	pCmdUI->Enable(!IsDetecting() && !m_reader.IsEmpty());
+	pCmdUI->Enable(!IsDetecting());
 }
 
 
@@ -547,6 +587,7 @@ void CobjDetectorDlg::OnEditPlay()
 		if (STATE_DONOTHING == m_nMediaState)
 		{
 			m_nMediaState = STATE_PLAYING;
+			m_reader.StartThread();
 			_beginthread(&DetectVideo, 0, this);
 		}
 		else if (STATE_PAUSE == m_nMediaState)
@@ -559,7 +600,7 @@ void CobjDetectorDlg::OnEditPlay()
 
 void CobjDetectorDlg::OnUpdateEditPlay(CCmdUI *pCmdUI)
 {
-	pCmdUI->Enable(m_reader.IsVideo() && !IsBusy());
+	pCmdUI->Enable(m_reader.IsVideo() && STATE_PLAYING != m_nMediaState);
 }
 
 
@@ -592,14 +633,24 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 {
 	std::vector<Tips> tips;
 	if (m_py)
-	{ 
-		npy_intp dims[] = {m_reader.dims(0), m_reader.dims(1), m_reader.dims(2)}; // 给定维度信息
+	{
+		//clock_t tm = clock();
+		// 需要转换为3通道图像再进行目标识别
+		switch (m_reader.dims(2))
+		{
+		case 3: break;
+		case 1: cvtColor(m, m, CV_GRAY2RGB); break;
+		case 4: cvtColor(m, m, CV_RGBA2RGB); break;
+		case 2: default: return tips;
+		}
+		npy_intp dims[] = { m_reader.dims(0), m_reader.dims(1), 3 }; // 给定维度信息
 		// 生成包含这个多维数组的PyObject对象，使用PyArray_SimpleNewFromData函数
 		// 第一个参数2表示维度，第二个为维度数组Dims,第三个参数指出数组的类型，第四个参数为数组
 		PyObject *PyArray  = PyArray_SimpleNewFromData(3, dims, NPY_UBYTE, m.data);
 		// 同样定义大小与Python函数参数个数一致的PyTuple对象
 		PyObject *ArgArray = PyTuple_New(1);
 		PyTuple_SetItem(ArgArray, 0, PyArray); 
+		m_tf.zeros();
 		m_tf = m_py->CallFunction("test_src", ArgArray, &m_tf);
 
 		//output.PrintBoxes();
@@ -617,12 +668,16 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 
 				cv::Rect rect(CvPoint(c * x1, r * x2), CvPoint(c * x3, r * x4));
 				Tips tip(rect, m_tf.scores[next + i], m_tf.classes[next + i]);
-				tip.AddTips(m);
-				if (m_tf.scores[next + i] > m_fThresh)
-					Save(m, m_tf.classes[next + i]);// 保存
-				tips.push_back(tip);
+				if (m_tf.scores[next + i] > m_fThreshShow)
+				{
+					tip.AddTips(m);					// 显示
+					tips.push_back(tip);
+					if (m_tf.scores[next + i] > m_fThreshSave)
+						Save(m, m_tf.classes[next + i]);// 保存
+				}
 			}
 		}
+		//OUTPUT("DoDetect using time = %d\n", clock() - tm);
 	}
 	return tips;
 }
@@ -631,7 +686,7 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 BOOL CobjDetectorDlg::PreTranslateMessage(MSG* pMsg)
 {
 	// 屏蔽 ESC/Enter 关闭窗体
-	if(pMsg->message == WM_KEYDOWN && 
+	if( pMsg->message == WM_KEYDOWN && 
 		(pMsg->wParam == VK_ESCAPE || pMsg->wParam == VK_RETURN) )
 		return TRUE;
 
@@ -659,6 +714,9 @@ void CobjDetectorDlg::OnFileIpc()
 	CIPCConfigDlg dlg;
 	if (IDOK == dlg.DoModal())
 	{
+		m_nMediaState = STATE_DONOTHING;
+		while(m_nThreadState[_PlayVideo] || m_nThreadState[_DetectVideo])
+			Sleep(10);
 		IPCamInfo info;
 		USES_CONVERSION;
 		strcpy_s(info.ip, W2A(dlg.m_strAddress));
@@ -682,4 +740,11 @@ void CobjDetectorDlg::OnFileIpc()
 void CobjDetectorDlg::OnUpdateFileIpc(CCmdUI *pCmdUI)
 {
 	pCmdUI->Enable(!IsDetecting());
+}
+
+
+BOOL CobjDetectorDlg::OnEraseBkgnd(CDC* pDC)
+{
+	return m_reader.IsImage() || STATE_DONOTHING == m_nMediaState ? 
+		CDialogEx::OnEraseBkgnd(pDC) : TRUE;
 }

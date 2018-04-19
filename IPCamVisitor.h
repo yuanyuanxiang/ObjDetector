@@ -26,24 +26,39 @@ typedef struct IPCamInfo
 	}
 }IPCamInfo;
 
+
+/************************************************************************
+* @class IPCamVisitor
+* @brief IPC访问器
+************************************************************************/
 class IPCamVisitor
 {
 private:
-	// 登陆ID
-	LONG m_user;
-	// IPC设备的信息
-	IPCamInfo m_cam;
-	// 取流通道
-	LONG m_port;
-	// 缓存
-	BYTE *m_buf;
 	// 缓存大小
 	int m_nLen;
+	// 登陆ID
+	LONG m_user;
+	// 取流通道
+	LONG m_port;
+
+	// 图像缓存
+	BYTE *m_buf;
+	// RGB缓存
+	BYTE *m_rgb;
+	// 图像数据
+	const BYTE *m_data;				// 指向图像缓存
+	// 图像属性
+	const BITMAPINFOHEADER *m_head;	// 指向图像缓存
+
+	// IPC设备的信息
+	IPCamInfo m_cam;
 
 public:
 	IPCamVisitor();
 
 	~IPCamVisitor(void);
+
+	void Create(int nBufferLen = WIDTH * HEIGHT * 4);
 
 	LONG LoginCamera(const IPCamInfo &info, HWND hWnd);
 

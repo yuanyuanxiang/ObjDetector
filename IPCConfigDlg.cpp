@@ -13,7 +13,7 @@ IMPLEMENT_DYNAMIC(CIPCConfigDlg, CDialogEx)
 
 CIPCConfigDlg::CIPCConfigDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CIPCConfigDlg::IDD, pParent)
-	, m_strAddress(_T("192.168.12.154"))
+	, m_strAddress(_T("192.168.12.153"))
 	, m_nPort(8000)
 	, m_strUser(_T("admin"))
 	, m_strPassword(_T("admin123"))

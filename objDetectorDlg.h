@@ -6,6 +6,7 @@
 #include "afxwin.h"
 #include "pyCaller.h"
 #include "FileReader.h"
+#include "CvvImage.h"
 
 // 矩形框颜色
 #define RECT_COLOR CV_RGB(0, 0, 255)
@@ -14,7 +15,7 @@
 // 线宽度
 #define THICK_NESS 2
 // 采集密度
-#define DETECT_RATE 6
+#define DETECT_RATE 4
 
 extern labelMap g_map; // 类别信息
 
@@ -35,6 +36,10 @@ struct Tips
 		cv::putText(m, text, cvPoint(rect.x, rect.y), 
 			CV_FONT_HERSHEY_SIMPLEX, 1.0, TEXT_COLOR, THICK_NESS);
 	}
+	void Output() const
+	{
+		OUTPUT("======> x=%d, y=%d, w=%d, h=%d), score = %f\n", rect.x, rect.y, rect.width, rect.height, score);
+	}
 };
 
 // 媒体状态
@@ -43,7 +48,7 @@ enum MediaState
 	STATE_DONOTHING = 0,			// 就绪
 	STATE_DETECTING,				// 检测
 	STATE_PLAYING,					// 播放
-	STATE_PAUSE, 
+	STATE_PAUSE,					// 暂停
 };
 
 #define Thread_Start    1			// 线程启动
@@ -93,7 +98,11 @@ protected:
 
 	int m_nThreadState[_Max];		// 线程状态
 
-	double m_fThresh;				// 图像阈值
+	double m_fThreshSave;			// 图像保存阈值
+
+	double m_fThreshShow;			// 图像显示阈值
+
+	CvvImage m_Image;				// 绘图图像
 
 	// 是否正在检测
 	bool IsDetecting() const { return STATE_DETECTING == m_nMediaState; }
@@ -102,7 +111,7 @@ protected:
 	bool IsBusy() const { return STATE_DETECTING == m_nMediaState || STATE_PLAYING == m_nMediaState; }
 
 	// 绘制图像
-	void Paint() { m_reader.Draw(m_hPaintDC, m_rtPaint); }
+	void Paint(const cv::Mat &m);
 
 	// 保存图像
 	void Save(const cv::Mat &m, int class_id);
@@ -148,4 +157,5 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnFileIpc();
 	afx_msg void OnUpdateFileIpc(CCmdUI *pCmdUI);
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 };

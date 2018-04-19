@@ -56,6 +56,11 @@ public:
 	float *classes;			// n x 100 矩阵
 	float *counts;			// n 维数组(每类个数)
 
+	/** 
+	* @brief 初始化每类个数为0
+	*/
+	void zeros() { if(counts) memset(counts, 0, n * sizeof(float)); }
+
 	/**
 	* @brief 构造一个n类tensorflow模型参数
 	* 默认构造的为空参数
@@ -270,7 +275,11 @@ public:
 	{
 		tfOutput out;
 		out = tf ? *tf : out;
+#if STATIC_DETECTING
+		static PyObject *pFunc = pFunMap[func_name];
+#else 
 		PyObject *pFunc = pFunMap[func_name];
+#endif
 		if (pFunc)
 		{
  			PyObject* pRetVal = PyEval_CallObject(pFunc, arg);

@@ -8,20 +8,52 @@
 #pragma comment(lib, "ws2_32.lib")
 #endif
 
+// 4字节对齐
+#define WIDTHBYTES(bits)    (((bits) + 31) / 32 * 4)
 
 IPCamVisitor::IPCamVisitor() 
 {
+	m_nLen = 0;
 	m_user = -1;
 	m_port = -1;
-	m_nLen = WIDTH * HEIGHT * 4;
-	m_buf = new BYTE[m_nLen];
+	m_buf = NULL;
+	m_rgb = NULL;
+	m_data = NULL;
+	m_head = NULL;
+	// 初始化SDK
+	if(!NET_DVR_Init())
+	{
+		OUTPUT("======> SDK Init failed.\n");
+	}
 }
 
 
 IPCamVisitor::~IPCamVisitor(void)
 {
 	LogoutCamera();
-	delete [] m_buf;
+	if(!NET_DVR_Cleanup())
+	{
+		OUTPUT("======> SDK unInit failed.\n");
+	}
+	if (m_buf)
+	{
+		delete [] m_buf;
+	}
+	if (m_rgb)
+	{
+		delete [] m_rgb;
+	}
+}
+
+
+void IPCamVisitor::Create(int nBufferLen)
+{
+	m_nLen = max(nBufferLen, 1024 * 1024);
+	m_buf = new BYTE[m_nLen];
+	m_rgb = new BYTE[3 * m_nLen / 4];
+	const BYTE* head = m_buf + sizeof(BITMAPFILEHEADER); // 图像信息位置
+	m_head = (BITMAPINFOHEADER *) head;
+	m_data = head + sizeof(BITMAPINFOHEADER); // 图像数据位置
 }
 
 
@@ -31,12 +63,6 @@ LONG IPCamVisitor::LoginCamera(const IPCamInfo &info, HWND hWnd)
 	LogoutCamera();
 	memcpy(&m_cam, &info, sizeof(IPCamInfo));
 #if SUPPORT_IPC
-	// 初始化SDK
-	if(!NET_DVR_Init())
-	{
-		OUTPUT("======> SDK Init failed.\n");
-		return -1;
-	}
 	// 登录摄像机
 	NET_DVR_DEVICEINFO_V30 devInfo = { 0 };
 	m_user = NET_DVR_Login_V30(m_cam.ip, m_cam.port, m_cam.user, m_cam.pwd, &devInfo);
@@ -69,11 +95,10 @@ LONG IPCamVisitor::LoginCamera(const IPCamInfo &info, HWND hWnd)
 cv::Mat IPCamVisitor::GetCapture()
 {
 	cv::Mat cap;
-	int i = 0;
 #if SUPPORT_IPC
 	do 
 	{
-		if (m_port >= 0)
+		if (m_port >= 0 && m_buf)
 		{
 			/** Parameters
 			nPort[in] 播放通道号 
@@ -88,22 +113,28 @@ cv::Mat IPCamVisitor::GetCapture()
 			{
 				OUTPUT("======> Capture failed. Error code = %d.\n", PlayM4_GetLastError(m_port));
 			}
-			// 两者长度相等，表示抓图为空
-			if (m_nLen != pBmpSize)
+			else if (m_nLen != pBmpSize)
 			{
-				BITMAPINFOHEADER i_header;
-				memcpy(&i_header, m_buf + sizeof(BITMAPFILEHEADER), sizeof(BITMAPINFOHEADER));
-				int width = i_header.biWidth, height = abs(i_header.biHeight); // 高度可能为负值
-				cap = Mat(height, width, CV_8UC4, m_buf + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER));
+				int W = m_head->biWidth, H = abs(m_head->biHeight);
+				int srcLen = 4 * W, dstLen = WIDTHBYTES(24 * W);
+				BYTE *pDst = m_rgb;
+				const BYTE *pSrc = m_data;
+				for (int i = 0; i < H; ++i, pSrc += srcLen, pDst += dstLen)
+				{
+					BYTE *pDstRow = pDst;
+					const BYTE *pSrcRow = pSrc;
+					for (int j = 0; j < W; ++j, pSrcRow += 4, pDstRow += 3)
+					{
+						memcpy(pDstRow, pSrcRow, 3);
+					}
+				}
+				cap = Mat(H, W, CV_8UC3);
+				memcpy(cap.data, m_rgb, H * dstLen);
+				// 下述构造函数是浅拷贝, 参看mat.hpp 849行
+				// cap = Mat(H, W, CV_8UC3, m_rgb);
 			}
 		}
-		if (cap.empty())
-		{
-			if (100 == ++i)
-				break;
-			Sleep(40);
-		}
-	} while (cap.empty());
+	} while (false);
 #endif
 	return cap;
 }
@@ -123,6 +154,5 @@ void IPCamVisitor::LogoutCamera()
 		NET_DVR_Logout_V30(m_user);
 		m_user = -1;
 	}
-	NET_DVR_Cleanup();
 #endif
 }

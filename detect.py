@@ -35,6 +35,7 @@ sess = tf.Session(graph=detection_graph, config=config)
 def test_image(path):
     image = Image.open(path)
     image_np = np.array(image).astype(np.uint8)
+    print('image.shape =', image_np.shape)
     image_np_expanded = np.expand_dims(image_np, axis=0)
 
     start_time = time.time()
