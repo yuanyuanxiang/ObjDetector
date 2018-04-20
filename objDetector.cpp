@@ -39,6 +39,23 @@ CobjDetectorApp theApp;
 
 BOOL CobjDetectorApp::InitInstance()
 {
+	// 当前目录下只运行单一实例
+	char path[_MAX_PATH], *p = path;
+	GetModuleFileNameA(NULL, path, _MAX_PATH);
+	while('\0' != *p) ++p;
+	while('\\' != *p) --p;
+	char folder[_MAX_PATH];
+	strcpy_s(folder, p + 1);
+	HANDLE h_mutex = CreateMutexA(NULL, FALSE, folder);
+	if (ERROR_ALREADY_EXISTS == GetLastError())
+	{
+		AfxMessageBox(L"当前目录下只允许单一实例！", MB_ICONINFORMATION);
+		return FALSE;
+	}
+	strcpy(p, "\\detect.py");
+	if (-1 == _access(path, 0))
+		AfxMessageBox(L"Python目标识别脚本不存在!", MB_ICONINFORMATION);
+
 	// 如果一个运行在 Windows XP 上的应用程序清单指定要
 	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
 	//则需要 InitCommonControlsEx()。否则，将无法创建窗口。
@@ -94,6 +111,9 @@ BOOL CobjDetectorApp::InitInstance()
 	{
 		delete pShellManager;
 	}
+
+	if (h_mutex)
+		CloseHandle(h_mutex);
 
 	// 由于对话框已关闭，所以将返回 FALSE 以便退出应用程序，
 	//  而不是启动应用程序的消息泵。

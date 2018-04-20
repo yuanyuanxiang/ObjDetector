@@ -53,12 +53,20 @@ private:
 	// IPC设备的信息
 	IPCamInfo m_cam;
 
+	// 缓存是否足够
+	bool IsBufferEnough(int w, int h) const 
+	{
+		return sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + w * h * 4 <= m_nLen;
+	}
+
 public:
 	IPCamVisitor();
 
 	~IPCamVisitor(void);
 
 	void Create(int nBufferLen = WIDTH * HEIGHT * 4);
+
+	void Release();
 
 	LONG LoginCamera(const IPCamInfo &info, HWND hWnd);
 

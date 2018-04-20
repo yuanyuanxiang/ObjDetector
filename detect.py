@@ -14,9 +14,6 @@ from PIL import Image
 # 模型位置
 PATH_TO_CKPT = 'frozen_inference_graph.pb'
 
-# 分类数
-NUM_CLASSES = 1
-
 # 初始化图
 detection_graph = tf.Graph()
 with detection_graph.as_default():
@@ -33,7 +30,11 @@ sess = tf.Session(graph=detection_graph, config=config)
 
 # 检测图片文件
 def test_image(path):
-    image = Image.open(path)
+    try:
+        image = Image.open(path)
+    except IOError:
+        print('IOError: File is not accessible.')
+        return
     image_np = np.array(image).astype(np.uint8)
     print('image.shape =', image_np.shape)
     image_np_expanded = np.expand_dims(image_np, axis=0)

@@ -96,12 +96,12 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 		}
 		if (STATE_DONOTHING == pThis->m_nMediaState)
 			break;
-		if (!pThis->m_reader.PushImage(m))
+		++count;
+		if (!pThis->m_reader.PushImage(m))// 播放不过来将丢帧处理
 		{
 			Sleep(10);
 			continue;
 		}
-		++count;
 		last = clock();
 		if (last - cur > 45)
 			/*OUTPUT("======> DetectVideo time = %d, i = %d\n", last - cur, count)*/;
@@ -279,15 +279,13 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-	ShowWindow(SW_MINIMIZE);
-
 	// TODO: 在此添加额外的初始化代码
 	CDC* pDC = m_picCtrl.GetDC();
 	m_picCtrl.GetClientRect(&m_rtPaint);
 	m_hPaintDC = pDC->GetSafeHdc();
 
 	// 读取类别信息
-	char path[_MAX_PATH], *p = path, obj[_MAX_PATH];;
+	char path[_MAX_PATH], *p = path, obj[_MAX_PATH];
 	GetModuleFileNameA(NULL, path, _MAX_PATH);
 	while('\0' != *p) ++p;
 	while('\\' != *p) --p;
@@ -295,6 +293,8 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	strcpy_s(m_strPath, path);
 	sprintf_s(obj, "%s\\object detection", path);
 	strcpy(p, "\\label_map.ini");
+	if (-1 == _access(path, 0))
+		MessageBox(L"类别信息文件不存在!", L"提示", MB_ICONINFORMATION);
 	int n = GetPrivateProfileIntA("item", "class_num", 1, path);
 	g_map.Create(n);
 	m_tf = tfOutput(max(n, 1));
@@ -304,9 +304,9 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	{
 		char temp[_MAX_PATH], name[_MAX_PATH];
 		sprintf_s(temp, "class%d", i+1);
-		GetPrivateProfileStringA("item", temp, "unknown", name, _MAX_PATH, path);
+		GetPrivateProfileStringA("item", temp, temp, name, _MAX_PATH, path);
 		sprintf_s(temp, "class%d_id", i+1);
-		int id = GetPrivateProfileIntA("item", temp, 1, path);
+		int id = GetPrivateProfileIntA("item", temp, i+1, path);
 		g_map.InsertItem(Item(name, id));
 		sprintf_s(temp, "%s\\%s", obj, name);
 		if (-1 == _access(temp, 0))
@@ -314,6 +314,8 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	}
 	// 读取settings
 	sprintf_s(path, "%s\\settings.ini", m_strPath);
+	if (-1 == _access(path, 0))
+		MessageBox(L"程序配置文件不存在!", L"提示", MB_ICONINFORMATION);
 	GetPrivateProfileStringA("settings", "thresh_show", "0.8", obj, _MAX_PATH, path);
 	m_fThreshShow = atof(obj);
 	GetPrivateProfileStringA("settings", "thresh_save", "1.0", obj, _MAX_PATH, path);
@@ -321,6 +323,8 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	m_fThreshSave = max(m_fThreshSave, m_fThreshShow);
 
 	GetDlgItem(IDC_IPC_CAPTURE)->ShowWindow(SW_HIDE);
+
+	ShowWindow(SW_SHOW);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -443,8 +447,7 @@ void CobjDetectorDlg::OnObjDetect()
 
 	if (m_reader.IsImage())
 	{
-		cv::Mat m = m_reader.Front();
-		DoDetect(m);
+		DoDetect(m_reader.Front());
 		Invalidate(TRUE);
 	}else if (m_reader.IsVideo())
 	{
@@ -636,14 +639,14 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 	{
 		//clock_t tm = clock();
 		// 需要转换为3通道图像再进行目标识别
-		switch (m_reader.dims(2))
+		switch (m_reader.dims(IMAGE_CHANNEL))
 		{
 		case 3: break;
 		case 1: cvtColor(m, m, CV_GRAY2RGB); break;
 		case 4: cvtColor(m, m, CV_RGBA2RGB); break;
 		case 2: default: return tips;
 		}
-		npy_intp dims[] = { m_reader.dims(0), m_reader.dims(1), 3 }; // 给定维度信息
+		npy_intp dims[] = { m_reader.dims(IMAGE_ROWS), m_reader.dims(IMAGE_COLS), 3 }; // 给定维度信息
 		// 生成包含这个多维数组的PyObject对象，使用PyArray_SimpleNewFromData函数
 		// 第一个参数2表示维度，第二个为维度数组Dims,第三个参数指出数组的类型，第四个参数为数组
 		PyObject *PyArray  = PyArray_SimpleNewFromData(3, dims, NPY_UBYTE, m.data);
@@ -660,13 +663,13 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 		const float r = m.rows; // 行数
 		for (int k = 0; k < g_map.num; ++k)
 		{
-			int next = 100 * k;
+			int next = k * MAX_BOXES_NUM;
+			const float *p = m_tf.boxes + next * 4;
 			for (int i = 0; i < m_tf.counts[k]; ++i)
 			{
-				float x1 = m_tf.p(i, 1, k), x2 = m_tf.p(i, 0, k), 
-					x3 = m_tf.p(i, 3, k), x4 = m_tf.p(i, 2, k);
+				float y1 = *p++, x1 = *p++, y2 = *p++, x2 = *p++;
 
-				cv::Rect rect(CvPoint(c * x1, r * x2), CvPoint(c * x3, r * x4));
+				cv::Rect rect(CvPoint(c * x1, r * y1), CvPoint(c * x2, r * y2));
 				Tips tip(rect, m_tf.scores[next + i], m_tf.classes[next + i]);
 				if (m_tf.scores[next + i] > m_fThreshShow)
 				{

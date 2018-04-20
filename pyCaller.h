@@ -63,7 +63,7 @@ public:
 
 	/**
 	* @brief 构造一个n类tensorflow模型参数
-	* 默认构造的为空参数
+	* @note 默认构造的为空参数
 	*/
 	tfOutput(int class_num = 0)
 	{
@@ -122,23 +122,25 @@ public:
 	{
 		if (i < n)
 		{
-			const float *header = boxes + i * (MAX_BOXES_NUM*4);
+			const float *p = boxes + i * (MAX_BOXES_NUM*4);
 			for (int i = 0; i < MAX_BOXES_NUM; ++i)
 			{
-				const float *row = header;
-				OUTPUT("%f\t %f\t %f\t %f\n", *row++, *row++, *row++, *row++);
-				header += 4;
+				OUTPUT("%f\t %f\t %f\t %f\n", *p++, *p++, *p++, *p++);
 			}
 		}
 	}
 };
 
+/************************************************************************
+* @struct Item
+* @brief 类别信息结构体（类别名称, 类别ID）
+************************************************************************/
 struct Item 
 {
 	int id;				// 类别ID(从1开始)
 	char name[64];		// 类别名称
 	Item() { id = 0; memset(name, 0, sizeof(name)); }
-	Item(const char *_name, int _id) { strcpy_s(name, _name); id = _id; }
+	Item(const char *_name, int _id) { strcpy_s(name, _name); id = max(_id, 1); }
 };
 
 /************************************************************************
@@ -148,16 +150,19 @@ struct Item
 class labelMap
 {
 public:
-	int num;
-	Item *items;
+	int num;			// 类别个数（至少一个）
+	Item *items;		// 类别信息
 	labelMap() { num = 0; items = 0; }
-	~labelMap() { delete [] items; }
+	~labelMap() { if(items) delete [] items; }
+
 	// 创建类别标签
-	void Create(int n) { num = max(n, 1); items = new Item[num]; }
+	void Create(int n) { num = max(n, 1); if(0 == items) items = new Item[num]; }
+	// 销毁类别标签
+	void Destroy() { num = 0; if(items) delete [] items; items = 0; }
 	// 插入新的类别
-	void InsertItem(const Item & it) { if(it.id > 0) items[it.id - 1] = it; }
+	void InsertItem(const Item & it) { if(it.id > 0 && it.id <= num) items[it.id - 1] = it; }
 	// 根据ID获取类名
-	const char* getItemName(int id) const { return id > 0 ? items[id - 1].name : ""; }
+	const char* getItemName(int id) const { return (id > 0 && id <= num) ? items[id - 1].name : ""; }
 };
 
 /************************************************************************

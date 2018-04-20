@@ -14,6 +14,16 @@ enum FileType
 	TYPE_CAMERA,			// 计算机摄像头
 };
 
+// 图像维度枚举
+enum DIMS
+{
+	IMAGE_HEIGHT = 0,		// 行
+	IMAGE_ROWS = 0,			// 高
+	IMAGE_WIDTH = 1,		// 宽
+	IMAGE_COLS = 1,			// 列
+	IMAGE_CHANNEL = 2,		// 通道(每像素字节数)
+};
+
 /************************************************************************
 * @class CFileReader
 * @brief 文件/流 读取器
@@ -23,7 +33,7 @@ class CFileReader
 private:
 	FileType m_nType;					// 文件类型
 	int m_nDims[3];						// 图像维度
-	int m_nImageBuf;					// 缓存帧数
+	int m_nImageBuf;					// 目标识别缓存帧数
 	int m_nStreamBuf;					// 视频流缓存帧数
 	std::queue<const cv::Mat> m_Buffer;	// 缓存队列
 	std::queue<const cv::Mat> m_Stream;	// IPC Stream队列
@@ -57,7 +67,7 @@ public:
 	void StartThread();
 
 	// 获取图像维度
-	int dims(int n) const { return m_nDims[n]; }
+	int dims(DIMS n) const { return m_nDims[n]; }
 
 	// 向播放队列添加一帧图像
 	bool PushImage(const cv::Mat &m);

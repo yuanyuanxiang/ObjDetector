@@ -20,29 +20,26 @@ IPCamVisitor::IPCamVisitor()
 	m_rgb = NULL;
 	m_data = NULL;
 	m_head = NULL;
+#if SUPPORT_IPC
 	// 初始化SDK
 	if(!NET_DVR_Init())
 	{
 		OUTPUT("======> SDK Init failed.\n");
 	}
+#endif
 }
 
 
 IPCamVisitor::~IPCamVisitor(void)
 {
 	LogoutCamera();
+#if SUPPORT_IPC
 	if(!NET_DVR_Cleanup())
 	{
 		OUTPUT("======> SDK unInit failed.\n");
 	}
-	if (m_buf)
-	{
-		delete [] m_buf;
-	}
-	if (m_rgb)
-	{
-		delete [] m_rgb;
-	}
+#endif
+	Release();
 }
 
 
@@ -56,6 +53,23 @@ void IPCamVisitor::Create(int nBufferLen)
 	m_data = head + sizeof(BITMAPINFOHEADER); // 图像数据位置
 }
 
+
+void IPCamVisitor::Release()
+{
+	if (m_buf)
+	{
+		delete [] m_buf;
+		m_nLen = 0;
+		m_buf = NULL;
+		m_head = NULL;
+		m_data = NULL;
+	}
+	if (m_rgb)
+	{
+		delete [] m_rgb;
+		m_rgb = NULL;
+	}
+}
 
 // 登陆摄像机
 LONG IPCamVisitor::LoginCamera(const IPCamInfo &info, HWND hWnd)
@@ -116,6 +130,12 @@ cv::Mat IPCamVisitor::GetCapture()
 			else if (m_nLen != pBmpSize)
 			{
 				int W = m_head->biWidth, H = abs(m_head->biHeight);
+				if (false == IsBufferEnough(W, H))
+				{
+					OUTPUT("======> Buffer of IPCamVisitor is not enough.\n");
+					Release();
+					break;
+				}
 				int srcLen = 4 * W, dstLen = WIDTHBYTES(24 * W);
 				BYTE *pDst = m_rgb;
 				const BYTE *pSrc = m_data;

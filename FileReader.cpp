@@ -20,7 +20,7 @@ void CFileReader::CaptureThread(LPVOID param)
 			Sleep(10);
 			continue;
 		}
-		if(!pThis->PushStream(m))
+		if(!pThis->PushStream(m)) // 处理不过来将进行丢帧
 		{
 			Sleep(10);
 			continue;
@@ -54,8 +54,8 @@ void CFileReader::StartThread()
 CFileReader::CFileReader(void)
 {
 	m_nType = TYPE_IMAGE;
-	m_nImageBuf = 50;
-	m_nStreamBuf = 50;
+	m_nImageBuf = 10;
+	m_nStreamBuf = 10;
 	memset(m_nDims, 0, 3 * sizeof(int));
 	m_bThreadStart = false;
 	InitializeCriticalSection(&m_cs);
