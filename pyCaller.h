@@ -173,6 +173,7 @@ public:
 class pyCaller
 {
 private:
+	static wchar_t pyHome[_MAX_PATH];			// python路径
 	PyObject* pModule;							// python模块
 	std::map<std::string, PyObject*> pFunMap;	// 函数列表
 
@@ -181,36 +182,78 @@ private:
 	inline int init_numpy(){
 
 		import_array();
-		return 0;
+		return 1;
 	}
 
 	// 解析python结果
 	tfOutput ParseResult(PyObject *pRetVal, tfOutput *tf);
 
 public:
+	// 设置python安装目录
+	static bool SetPythonHome(const char *py)
+	{
+		char pyExe[_MAX_PATH] = { 0 };
+		strcat_s(pyExe, py);
+		strcat_s(pyExe, "\\python.exe");
+		if (-1 != _access(pyExe, 0))
+		{
+			size_t s;
+			mbstowcs_s(&s, pyHome, py, strlen(py));
+			OUTPUT("======> SetPythonHome: %s\n", py);
+			return true;
+		}
+		else
+		{
+			OUTPUT("======> SetPythonHome: home don't include python.exe.\n", py);
+			return false;
+		}
+	}
+
 	/**
 	* @brief 构造一个pyCaller对象，接收py脚本名称作为传入参数
 	*/
 	pyCaller(const char * module_name)
 	{
-		clock_t t = clock();
-		Py_SetPythonHome(PYTHON_HOME);
-		Py_Initialize();
-		init_numpy();
-		pModule = PyImport_ImportModule(module_name);
-		if (NULL == pModule)
-			OUTPUT("PyImport_ImportModule failed.\n");
-		t = clock() - t;
-		char szOut[128];
-		sprintf_s(szOut, "PyImport_ImportModule using %d ms.\n", t);
-		OutputDebugStringA(szOut);
-#ifndef _AFX
-		printf(szOut);
-#endif
-		if (0 == Py_IsInitialized())
+		pModule = NULL;
+		Init(module_name);
+	}
+
+	/**
+	* @brief 初始化pyCaller对象，接收py脚本名称作为传入参数
+	*/
+	bool Init(const char * module_name)
+	{
+		if (pyHome[0] && NULL == pModule)
 		{
-			OUTPUT("Py_IsInitialized = 0.\n");
+			clock_t t = clock();
+			Py_SetPythonHome(pyHome);
+			Py_Initialize();
+			if (NUMPY_IMPORT_ARRAY_RETVAL == init_numpy())
+			{
+				OUTPUT("init_numpy failed.\n");
+				return false;
+			}
+			PyObject *py = PyImport_ImportModule(module_name);
+			if (NULL == py)
+				OUTPUT("PyImport_ImportModule failed.\n");
+			t = clock() - t;
+			char szOut[128];
+			sprintf_s(szOut, "PyImport_ImportModule using %d ms.\n", t);
+			OutputDebugStringA(szOut);
+#ifndef _AFX
+			printf(szOut);
+#endif
+			if (0 == Py_IsInitialized())
+			{
+				OUTPUT("Py_IsInitialized = 0.\n");
+			}
+			pModule = py;
 		}
+		else
+		{
+			OUTPUT("Py_SetPythonHome is not called.\n");
+		}
+		return pModule;
 	}
 
 	/**
@@ -223,8 +266,12 @@ public:
 		for (std::map<std::string, PyObject*>::iterator p = pFunMap.begin(); 
 			p != pFunMap.end(); ++p)
 			if (p->second) Py_DECREF(p->second);
-		Py_Finalize();
+		if (pyHome[0])
+			Py_Finalize();
 	}
+
+	// 是否加载了指定模块
+	bool IsModuleLoaded() const { return pModule; }
 
 	/**
 	* @brief 使用前激活指定名称的函数

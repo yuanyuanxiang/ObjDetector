@@ -1,5 +1,6 @@
 #include "pyCaller.h"
 
+wchar_t pyCaller::pyHome[] = { 0 };
 
 tfOutput pyCaller::ParseResult(PyObject *pRetVal, tfOutput *tf)
 {

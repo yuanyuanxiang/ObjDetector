@@ -14,7 +14,7 @@ void CFileReader::CaptureThread(LPVOID param)
 	{
 		cur = last;
 		cv::Mat m = pThis->IsIPC() ? pThis->m_IPC.GetCapture() : 
-			pThis->PlayVideo();
+			pThis->ReadCamera();
 		if (m.empty())
 		{
 			Sleep(10);
@@ -40,7 +40,7 @@ void CFileReader::CaptureThread(LPVOID param)
 // Æô¶¯Ïß³Ì
 void CFileReader::StartThread() 
 {
-	if(IsStream() && !m_bThreadStart)
+	if(IsStream() && !m_bThreadStart && m_nStreamBuf)
 	{
 		_beginthread(CaptureThread, 0, this);
 		int k = 0;
@@ -48,6 +48,15 @@ void CFileReader::StartThread()
 			Sleep(40);
 		}while (NoStream() && ++k < 25);
 	}
+}
+
+
+void CFileReader::SetBufferSize(int nSize)
+{
+	Lock();
+	m_nStreamBuf = nSize < BUF_MIN_LEN ? 0 : nSize;
+	m_nImageBuf = max(nSize, BUF_MIN_LEN);
+	Unlock();
 }
 
 
@@ -151,13 +160,15 @@ cv::Mat  CFileReader::PlayVideo()
 	cv::Mat m;
 	try
 	{
-		if (TYPE_VIDEO == m_nType || TYPE_CAMERA == m_nType)
+		if (TYPE_VIDEO == m_nType)
 		{
 			if (m_Cap.read(m))
 				return m;
 		}
+		else if (TYPE_CAMERA == m_nType)
+			return 0 == m_nStreamBuf ? ReadCamera() : PopStream();
 		else if (TYPE_IPC == m_nType)
-			return PopStream();
+			return 0 == m_nStreamBuf ? m_IPC.GetCapture() : PopStream();
 
 	}catch(...){
 	}

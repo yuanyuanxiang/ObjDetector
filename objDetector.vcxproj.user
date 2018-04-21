@@ -1,4 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <RemoteDebuggerCommand>C:\Users\Administrator\Desktop\ObjDetector\objdetector.exe</RemoteDebuggerCommand>
+    <RemoteDebuggerWorkingDirectory>C:\Users\Administrator\Desktop\ObjDetector</RemoteDebuggerWorkingDirectory>
+    <RemoteDebuggerServerName>192.168.12.90</RemoteDebuggerServerName>
+    <DeploymentDirectory>C:\Users\Administrator\Desktop\ObjDetector</DeploymentDirectory>
+    <AdditionalFiles>$(TargetDir)\objDetector.pdb</AdditionalFiles>
+    <RemoteDebuggerDeployDebugCppRuntime>true</RemoteDebuggerDeployDebugCppRuntime>
+    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+  </PropertyGroup>
 </Project>

@@ -207,6 +207,7 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
     <ClInclude Include="objDetectorDlg.h" />
     <ClInclude Include="pyCaller.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SettingsDlg.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StrTransfer.h" />
     <ClInclude Include="targetver.h" />
@@ -219,6 +220,7 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
     <ClCompile Include="objDetector.cpp" />
     <ClCompile Include="objDetectorDlg.cpp" />
     <ClCompile Include="pyCaller.cpp" />
+    <ClCompile Include="SettingsDlg.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

@@ -1,6 +1,10 @@
 #include "config.h"
 #include "python.h"
 
+//////////////////////////////////////////////////////////////////////////
+// Python 配置
+#define PYTHON_HOME L"D:/Anaconda3/envs/tfgpu"
+
 // 包含 numpy 中的头文件arrayobject.h
 #include "..\Lib\site-packages\numpy\core\include\numpy\arrayobject.h"
 

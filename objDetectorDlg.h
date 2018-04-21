@@ -14,8 +14,6 @@
 #define TEXT_COLOR CV_RGB(0, 255, 0)
 // 线宽度
 #define THICK_NESS 2
-// 采集密度
-#define DETECT_RATE 4
 
 extern labelMap g_map; // 类别信息
 
@@ -102,13 +100,23 @@ protected:
 
 	double m_fThreshShow;			// 图像显示阈值
 
+	int m_nBufSize;					// 缓存帧数
+
+	int m_nDetectStep;				// 检测帧数步长
+
+	char m_pyHome[_MAX_PATH];		// Python Home
+
 	CvvImage m_Image;				// 绘图图像
+
+	CString m_strSettings;			// setting.ini
 
 	// 是否正在检测
 	bool IsDetecting() const { return STATE_DETECTING == m_nMediaState; }
 
 	// 是否正忙
 	bool IsBusy() const { return STATE_DETECTING == m_nMediaState || STATE_PLAYING == m_nMediaState; }
+
+	const int& GetStep() const { return m_nDetectStep; }
 
 	// 绘制图像
 	void Paint(const cv::Mat &m);
@@ -158,4 +166,6 @@ public:
 	afx_msg void OnFileIpc();
 	afx_msg void OnUpdateFileIpc(CCmdUI *pCmdUI);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg void OnSetThreshold();
+	afx_msg void OnSetPython();
 };

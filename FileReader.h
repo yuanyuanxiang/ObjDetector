@@ -24,6 +24,8 @@ enum DIMS
 	IMAGE_CHANNEL = 2,		// 通道(每像素字节数)
 };
 
+#define BUF_MIN_LEN 8		// 最小缓存帧数
+
 /************************************************************************
 * @class CFileReader
 * @brief 文件/流 读取器
@@ -59,12 +61,18 @@ private:
 	// 没有取到视频画面
 	bool NoStream();
 
+	// 从摄像头读取一帧图像
+	cv::Mat ReadCamera() { cv::Mat m; m_Cap.read(m); return m; }
+
 public:
 	CFileReader(void);
 	~CFileReader(void);
 
 	// 启动线程
 	void StartThread();
+
+	// 设置最大缓存帧数
+	void SetBufferSize(int nSize); 
 
 	// 获取图像维度
 	int dims(DIMS n) const { return m_nDims[n]; }

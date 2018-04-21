@@ -8,6 +8,7 @@
 #include "afxdialogex.h"
 #include "IPCConfigDlg.h"
 #include <direct.h>
+#include "SettingsDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -61,7 +62,7 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 	_beginthread(&PlayVideo, 0, param);
 	std::vector<Tips> tips;
 	int count = 0, flag = 0;
-	const int K = min(DETECT_RATE, 4);
+	const int& step = pThis->GetStep();
 	clock_t last = clock(), cur;
 	do 
 	{
@@ -77,12 +78,12 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 		switch (pThis->m_nMediaState)
 		{
 		case STATE_DETECTING:
-			if ( 0 == (count % DETECT_RATE) )
+			if ( 0 == (count % step) )
 			{
 				flag = 0;
 				tips = pThis->DoDetect(m);
 			}
-			else if (++flag < K)// 使矩形框停留 K * 40 ms
+			else if (++flag < min(step, 4))// 使矩形框停留 K * 40 ms
 				AddRectanges(m, tips);
 			break;
 		case STATE_PAUSE:
@@ -211,9 +212,6 @@ CobjDetectorDlg::CobjDetectorDlg(CWnd* pParent /*=NULL*/)
 	m_bExit = false;
 	m_nThreadState[_InitPyCaller] = m_nThreadState[_DetectVideo] = 
 		m_nThreadState[_PlayVideo] = Thread_Stop;
-#if USING_TENSORFLOW
-	_beginthread(&InitPyCaller, 0, this);
-#endif
 }
 
 void CobjDetectorDlg::DoDataExchange(CDataExchange* pDX)
@@ -245,6 +243,8 @@ BEGIN_MESSAGE_MAP(CobjDetectorDlg, CDialogEx)
 	ON_COMMAND(ID_FILE_IPC, &CobjDetectorDlg::OnFileIpc)
 	ON_UPDATE_COMMAND_UI(ID_FILE_IPC, &CobjDetectorDlg::OnUpdateFileIpc)
 	ON_WM_ERASEBKGND()
+	ON_COMMAND(ID_SET_THRESHOLD, &CobjDetectorDlg::OnSetThreshold)
+	ON_COMMAND(ID_SET_PYTHON, &CobjDetectorDlg::OnSetPython)
 END_MESSAGE_MAP()
 
 
@@ -321,6 +321,24 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	GetPrivateProfileStringA("settings", "thresh_save", "1.0", obj, _MAX_PATH, path);
 	m_fThreshSave = atof(obj);
 	m_fThreshSave = max(m_fThreshSave, m_fThreshShow);
+	m_nBufSize = GetPrivateProfileIntA("settings", "buffer_size", 25, path);
+	m_nDetectStep = GetPrivateProfileIntA("settings", "detect_step", 6, path);
+	if (m_nDetectStep < 1)
+		m_nDetectStep = 1;
+	m_reader.SetBufferSize(m_nBufSize);
+
+	GetPrivateProfileStringA("settings", "python_home", "", m_pyHome, _MAX_PATH, path);
+	if(false == pyCaller::SetPythonHome(m_pyHome))
+	{
+		m_pyHome[0] = '\0';
+		MessageBox(L"python_home配置错误!", L"提示", MB_ICONINFORMATION);
+	}
+
+	m_strSettings = CString(path);
+
+#if USING_TENSORFLOW
+	_beginthread(&InitPyCaller, 0, this);
+#endif
 
 	GetDlgItem(IDC_IPC_CAPTURE)->ShowWindow(SW_HIDE);
 
@@ -367,9 +385,14 @@ void CobjDetectorDlg::OnPaint()
 	}
 	else
 	{
+		// 在Windows10 x64机器上即使不打开任何文件，激活对话框：
 		// 此函数过于频繁使得程序空闲时CPU也很高，因此加上Sleep
-		if (STATE_DETECTING != m_nMediaState)
+		static clock_t tm = clock();
+		if (!IsBusy())
 			Paint(m_reader.Front());
+		Sleep(clock() - tm < 20 ? 20 : 1);
+		tm = clock();
+		OUTPUT("======> OnPaint current time = %d\n", tm);
 	}
 }
 
@@ -635,7 +658,7 @@ void CobjDetectorDlg::OnUpdateEditStop(CCmdUI *pCmdUI)
 std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 {
 	std::vector<Tips> tips;
-	if (m_py)
+	if (m_py && m_py->IsModuleLoaded())
 	{
 		//clock_t tm = clock();
 		// 需要转换为3通道图像再进行目标识别
@@ -750,4 +773,53 @@ BOOL CobjDetectorDlg::OnEraseBkgnd(CDC* pDC)
 {
 	return m_reader.IsImage() || STATE_DONOTHING == m_nMediaState ? 
 		CDialogEx::OnEraseBkgnd(pDC) : TRUE;
+}
+
+
+void CobjDetectorDlg::OnSetThreshold()
+{
+	CSettingsDlg dlg;
+	dlg.m_fThreshSave = m_fThreshSave;
+	dlg.m_fThreshShow = m_fThreshShow;
+	dlg.m_nBufferSize = m_nBufSize;
+	dlg.m_nDetectStep = m_nDetectStep;
+	if (IDOK == dlg.DoModal())
+	{
+		m_fThreshShow = max(dlg.m_fThreshShow, 0.);
+		m_fThreshSave = max(dlg.m_fThreshSave, m_fThreshShow);
+		m_nBufSize = dlg.m_nBufferSize;
+		m_nDetectStep = dlg.m_nDetectStep;
+		m_reader.SetBufferSize(m_nBufSize);
+	}
+}
+
+
+void CobjDetectorDlg::OnSetPython()
+{
+	CString home(m_pyHome);
+	CFolderPickerDialog dlg;
+	if(IDOK == dlg.DoModal() && home != dlg.GetFolderPath())
+	{
+		USES_CONVERSION;
+		const char *py = W2A(dlg.GetFolderPath());
+		if(false == pyCaller::SetPythonHome(py))
+		{
+			MessageBox(L"python_home配置错误!", L"提示", MB_ICONINFORMATION);
+		}
+		else
+		{
+			sprintf_s(m_pyHome, py);
+			WritePrivateProfileString(L"settings", L"python_home", dlg.GetFolderPath(), m_strSettings);
+			if (m_py->IsModuleLoaded())
+			{
+				MessageBox(L"重启程序才能生效!", L"提示", MB_ICONINFORMATION);
+			}
+			else
+			{
+				BeginWaitCursor();
+				m_py->Init("detect");
+				EndWaitCursor();
+			}
+		}
+	}
 }
