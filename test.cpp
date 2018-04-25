@@ -71,38 +71,7 @@ public:
 	void CallFunction(const char * func_name, PyObject *arg)
 	{
 		if (pFunMap && arg)
-		{
-			PyObject * pRetVal = PyEval_CallObject(pFunMap, arg);
-			if (NULL == pRetVal)
-				return;
-			if (PyTuple_Check(pRetVal))
-			{
-				int SizeOfTuple = PyTuple_Size(pRetVal);
-				for(int i = 0; i < SizeOfTuple; ++i)
-				{
-					PyArrayObject *ListItem = (PyArrayObject *)PyTuple_GetItem(pRetVal, i);
-					int x1 = ListItem->dimensions[0], x2 = ListItem->dimensions[1], 
-						x3 = ListItem->dimensions[2];
-					int p[256], num = x1 * x2 * x3 ;
-					memcpy(p, ListItem->data, num * sizeof(int));
-					for (int j = 0; j < num; ++j)
-						printf("%d, ", p[j]);
-					printf("\n\n\n\n");
-					for(int r = 0; r < x1; ++r)
-					{
-						printf("\n\n");
-						for (int c = 0; c < x2; ++c)
-						{
-							for (int k = 0; k < x3; ++k)
-								printf("%d\t", 
-								*(int *)(ListItem->data + r * ListItem->strides[0] + 
-								c * ListItem->strides[1] + k * ListItem->strides[2]));
-							printf("\n");
-						}
-					}
-				}
-			}
-		}
+			PyEval_CallObject(pFunMap, arg);
 	}
 };
 

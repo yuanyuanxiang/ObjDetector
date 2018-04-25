@@ -63,10 +63,14 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 	std::vector<Tips> tips;
 	int count = 0, flag = 0;
 	const int& step = pThis->GetStep();
+#ifdef _DEBUG
 	clock_t last = clock(), cur;
+#endif
 	do 
 	{
+#ifdef _DEBUG
 		cur = last;
+#endif
 		cv::Mat m = pThis->m_reader.PlayVideo();
 		if (m.empty())
 		{
@@ -103,9 +107,11 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 			Sleep(10);
 			continue;
 		}
+#ifdef _DEBUG
 		last = clock();
 		if (last - cur > 45)
 			/*OUTPUT("======> DetectVideo time = %d, i = %d\n", last - cur, count)*/;
+#endif
 	} while (!pThis->m_bExit);
 	timeEndPeriod(1);
 	pThis->m_nThreadState[_DetectVideo] = Thread_Stop;
@@ -121,10 +127,16 @@ void CobjDetectorDlg::PlayVideo(LPVOID param)
 	timeBeginPeriod(1);
 	while(pThis->m_nThreadState[_DetectVideo] && pThis->m_reader.IsBuffering())
 		Sleep(10);
+#ifdef _DEBUG
 	clock_t last = clock(), cur;
+#endif
 	do
 	{
+#ifdef _DEBUG
 		cur = last;
+#else 
+		clock_t cur(clock());
+#endif
 		switch (pThis->m_nMediaState)
 		{
 		case STATE_DETECTING:
@@ -151,9 +163,11 @@ void CobjDetectorDlg::PlayVideo(LPVOID param)
 		pThis->Paint(m);
 		int nTime = 40 - (clock() - cur);
 		Sleep(nTime > 0 ? nTime : 0);
+#ifdef _DEBUG
 		last = clock();
 		if (last - cur > 45)
 			OUTPUT("======> PlayVideo time = %d\n", last - cur);
+#endif
 	} while (!pThis->m_bExit);
 	timeEndPeriod(1);
 	pThis->m_reader.Open(pThis->m_strFile);
@@ -245,6 +259,7 @@ BEGIN_MESSAGE_MAP(CobjDetectorDlg, CDialogEx)
 	ON_WM_ERASEBKGND()
 	ON_COMMAND(ID_SET_THRESHOLD, &CobjDetectorDlg::OnSetThreshold)
 	ON_COMMAND(ID_SET_PYTHON, &CobjDetectorDlg::OnSetPython)
+	ON_COMMAND(ID_SHOW_RESULT, &CobjDetectorDlg::OnShowResult)
 END_MESSAGE_MAP()
 
 
@@ -344,6 +359,9 @@ BOOL CobjDetectorDlg::OnInitDialog()
 
 	ShowWindow(SW_SHOW);
 
+	m_pResult = new CResultDlg(this);
+	m_pResult->Create(IDD_RESULT_DLG, this);
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -402,13 +420,17 @@ void CobjDetectorDlg::Paint(const cv::Mat &m)
 {
 	if (!m.empty() && m_rtPaint.Width() && m_rtPaint.Height())
 	{
+#ifdef _DEBUG
 		clock_t tm = clock();
+#endif
 		IplImage t = IplImage(m);
 		m_Image.CopyOf(&t, 1);
 		m_Image.DrawToHDC(m_hPaintDC, m_rtPaint);
+#ifdef _DEBUG
 		tm = clock() - tm;
 		if (tm > 40)
 			OUTPUT("======> DrawToHDC using time = %d\n", tm);
+#endif
 	}
 }
 
@@ -447,14 +469,9 @@ void CobjDetectorDlg::OnDestroy()
 {
 	CDialogEx::OnDestroy();
 
-	m_bExit = true;
-	m_nMediaState = STATE_DONOTHING;
-	while (m_nThreadState[_InitPyCaller] || m_nThreadState[_DetectVideo] || 
-		m_nThreadState[_PlayVideo] || IsDetecting())
-		Sleep(10);
+	if (m_py) delete m_py;
 
-	if (m_py)
-		delete m_py;
+	if (m_pResult) delete m_pResult;
 
 	m_reader.Destroy();
 }
@@ -492,6 +509,7 @@ void CobjDetectorDlg::OnFileClose()
 {
 	memset(m_strFile, 0, _MAX_PATH);
 	m_reader.Clear();
+	m_pResult->ClearResult();
 	Invalidate(TRUE);
 	m_nMediaState = STATE_DONOTHING;
 }
@@ -602,6 +620,7 @@ void CobjDetectorDlg::OnUpdateFileClose(CCmdUI *pCmdUI)
 
 void CobjDetectorDlg::OnFileQuit()
 {
+	m_pResult->StopShow();
 	SendMessage(WM_CLOSE, 0, 0);
 }
 
@@ -660,7 +679,6 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 	std::vector<Tips> tips;
 	if (m_py && m_py->IsModuleLoaded())
 	{
-		//clock_t tm = clock();
 		// 需要转换为3通道图像再进行目标识别
 		switch (m_reader.dims(IMAGE_CHANNEL))
 		{
@@ -679,16 +697,16 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 		m_tf.zeros();
 		m_tf = m_py->CallFunction("test_src", ArgArray, &m_tf);
 
-		//output.PrintBoxes();
 		if (0 == m_tf.n)
 			return tips;
-		const float c = m.cols; // 列数
-		const float r = m.rows; // 行数
-		for (int k = 0; k < g_map.num; ++k)
+		const int c = m.cols; // 列数
+		const int r = m.rows; // 行数
+		bool bNotFind = true; // 未检测到目标
+		for (int k = 0; k < g_map.num; ++k)// 遍历每个类别
 		{
 			int next = k * MAX_BOXES_NUM;
 			const float *p = m_tf.boxes + next * 4;
-			for (int i = 0; i < m_tf.counts[k]; ++i)
+			for (int i = 0; i < m_tf.counts[k]; ++i)// 遍历每个结果
 			{
 				float y1 = *p++, x1 = *p++, y2 = *p++, x2 = *p++;
 
@@ -702,8 +720,17 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 						Save(m, m_tf.classes[next + i]);// 保存
 				}
 			}
+			if (0 < m_tf.counts[k] && m_pResult->IsWindowVisible()) // 对相似度最大的结果进行展示
+			{
+				bNotFind = false;
+				const float *p = m_tf.boxes + next * 4;
+				float y1 = *p++, x1 = *p++, y2 = *p++, x2 = *p++;
+				cv::Mat sub_m(m, cv::Rect(CvPoint(c * x1, r * y1), CvPoint(c * x2, r * y2)));
+				m_pResult->ShowResult(sub_m, m_tf.classes[next], m_tf.counts[k], m_tf.scores[next]);
+			}
 		}
-		//OUTPUT("DoDetect using time = %d\n", clock() - tm);
+		if (bNotFind)
+			m_pResult->ClearResult();
 	}
 	return tips;
 }
@@ -724,13 +751,20 @@ void CobjDetectorDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
 
+	CRect rt;
+	GetClientRect(&rt);
+
 	if (m_picCtrl.GetSafeHwnd())
 	{
-		CRect rt;
-		GetClientRect(&rt);
 		m_picCtrl.MoveWindow(CRect(rt.left + EDGE, rt.top + EDGE, 
 			rt.right - EDGE, rt.bottom - EDGE), TRUE);
 		m_picCtrl.GetClientRect(&m_rtPaint);
+	}
+	if (m_pResult->GetSafeHwnd())
+	{
+		m_pResult->MoveWindow(CRect(rt.right - EDGE - 240*1.8f, 
+			rt.bottom - EDGE - 128*2.4f, 
+			rt.right - EDGE, rt.bottom - EDGE), TRUE);
 	}
 }
 
@@ -822,4 +856,24 @@ void CobjDetectorDlg::OnSetPython()
 			}
 		}
 	}
+}
+
+
+void CobjDetectorDlg::OnShowResult()
+{
+	m_pResult->ShowWindow(m_pResult->IsWindowVisible() ? SW_HIDE : SW_SHOW);
+}
+
+
+BOOL CobjDetectorDlg::DestroyWindow()
+{
+	m_bExit = true;
+	m_nMediaState = STATE_DONOTHING;
+	m_pResult->StopShow();
+	while (m_nThreadState[_InitPyCaller] || m_nThreadState[_DetectVideo] || 
+		m_nThreadState[_PlayVideo] || IsDetecting())
+		Sleep(10);
+	m_pResult->DestroyWindow();
+
+	return CDialogEx::DestroyWindow();
 }

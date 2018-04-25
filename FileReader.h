@@ -17,8 +17,8 @@ enum FileType
 // 图像维度枚举
 enum DIMS
 {
-	IMAGE_HEIGHT = 0,		// 行
-	IMAGE_ROWS = 0,			// 高
+	IMAGE_HEIGHT = 0,		// 高
+	IMAGE_ROWS = 0,			// 行
 	IMAGE_WIDTH = 1,		// 宽
 	IMAGE_COLS = 1,			// 列
 	IMAGE_CHANNEL = 2,		// 通道(每像素字节数)

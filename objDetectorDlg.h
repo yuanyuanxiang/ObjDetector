@@ -7,6 +7,7 @@
 #include "pyCaller.h"
 #include "FileReader.h"
 #include "CvvImage.h"
+#include "ResultDlg.h"
 
 // 矩形框颜色
 #define RECT_COLOR CV_RGB(0, 0, 255)
@@ -137,6 +138,8 @@ protected:
 protected:
 	HICON m_hIcon;
 
+	CResultDlg *m_pResult; // 结果展示对话框
+
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
@@ -168,4 +171,6 @@ public:
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSetThreshold();
 	afx_msg void OnSetPython();
+	afx_msg void OnShowResult();
+	virtual BOOL DestroyWindow();
 };

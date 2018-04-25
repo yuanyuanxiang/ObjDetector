@@ -9,10 +9,16 @@ void CFileReader::CaptureThread(LPVOID param)
 	OutputDebugStringA("======> CaptureThread Start.\n");
 	pThis->m_bThreadStart = true;
 	timeBeginPeriod(1);
+#ifdef _DEBUG
 	clock_t last = clock(), cur;
+#endif
 	while (pThis->IsStream())
 	{
+#ifdef _DEBUG
 		cur = last;
+#else 
+		clock_t cur(clock());
+#endif
 		cv::Mat m = pThis->IsIPC() ? pThis->m_IPC.GetCapture() : 
 			pThis->ReadCamera();
 		if (m.empty())
@@ -27,9 +33,11 @@ void CFileReader::CaptureThread(LPVOID param)
 		}
 		int nTime = 40 - (clock() - cur);
 		Sleep(nTime > 0 ? nTime : 0);
+#ifdef _DEBUG
 		last = clock();
 		if (last - cur > 45)
 			OUTPUT("======> CaptureThread time = %d\n", last - cur);
+#endif
 	}
 	timeEndPeriod(1);
 	pThis->m_bThreadStart = false;

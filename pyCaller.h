@@ -59,7 +59,7 @@ public:
 	/** 
 	* @brief 初始化每类个数为0
 	*/
-	void zeros() { if(counts) memset(counts, 0, n * sizeof(float)); }
+	inline void zeros() { if(counts) memset(counts, 0, n * sizeof(float)); }
 
 	/**
 	* @brief 构造一个n类tensorflow模型参数
