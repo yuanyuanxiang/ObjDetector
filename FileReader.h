@@ -101,6 +101,9 @@ public:
 	// IPC
 	bool IsIPC() const { return TYPE_IPC == m_nType; }
 
+	// 是否为空
+	bool IsEmpty() const { return TYPE_UNKNOWN == m_nType; }
+
 	// 打开文件
 	bool Open(const char *path);
 

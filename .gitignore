@@ -11,3 +11,5 @@
 *.suo
 *.sdf
 *.jpg
+.svn
+x64

@@ -112,7 +112,7 @@ public:
 	}
 
 	// 访问指定元素
-	inline float p(int r, int c, int i = 0) const
+	inline float at(int r, int c, int i = 0) const
 	{
 		return boxes[i * (MAX_BOXES_NUM*4) + r * 4 + c];
 	}
@@ -179,8 +179,8 @@ private:
 
 	// 初始化 numpy 执行环境，主要是导入包
 	// python2.7用void返回类型，python3.0以上用int返回类型
-	inline int init_numpy(){
-
+	inline int init_numpy()
+	{
 		import_array();
 		return 1;
 	}

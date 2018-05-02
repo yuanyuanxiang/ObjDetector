@@ -45,7 +45,7 @@ IPCamVisitor::~IPCamVisitor(void)
 
 void IPCamVisitor::Create(int nBufferLen)
 {
-	m_nLen = max(nBufferLen, 1024 * 1024);
+	m_nLen = max(nBufferLen, 4 * 1024 * 1024);
 	m_buf = new BYTE[m_nLen];
 	m_rgb = new BYTE[3 * m_nLen / 4];
 	const BYTE* head = m_buf + sizeof(BITMAPFILEHEADER); // ÕºœÒ–≈œ¢Œª÷√

@@ -7,6 +7,6 @@
     <DeploymentDirectory>C:\Users\Administrator\Desktop\ObjDetector</DeploymentDirectory>
     <AdditionalFiles>$(TargetDir)\objDetector.pdb</AdditionalFiles>
     <RemoteDebuggerDeployDebugCppRuntime>true</RemoteDebuggerDeployDebugCppRuntime>
-    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

@@ -10,8 +10,8 @@
 
 // 初始化 numpy 执行环境，主要是导入包
 // python2.7用void返回类型，python3.0以上用int返回类型
-int init_numpy(){
-
+int init_numpy()
+{
 	import_array();
 	return 0;
 }
@@ -70,8 +70,7 @@ public:
 	*/
 	void CallFunction(const char * func_name, PyObject *arg)
 	{
-		if (pFunMap && arg)
-			PyEval_CallObject(pFunMap, arg);
+		if (pFunMap && arg) PyEval_CallObject(pFunMap, arg);
 	}
 };
 

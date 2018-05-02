@@ -18,6 +18,16 @@
 
 labelMap g_map;
 
+// 根据当前时间生成一个文件标题[年-月-日 时分秒_毫秒]
+std::string getTitle() 
+{
+	char title[64];
+	time_t timep = time(NULL);
+	strftime(title, sizeof(title), "%Y-%m-%d %H%M%S", localtime(&timep));
+	sprintf_s(title, "%s_%d", title, clock());
+	return title;
+}
+
 // 给图像添加矩形并标注文字
 void AddRectanges(cv::Mat &m, const std::vector<Tips> &tips)
 {
@@ -28,14 +38,73 @@ void AddRectanges(cv::Mat &m, const std::vector<Tips> &tips)
 
 
 // 保存图像
-void CobjDetectorDlg::Save(const cv::Mat &m, int class_id)
+void CobjDetectorDlg::Save(const cv::Mat &m, const vector<Tips> &tips)
 {
-	time_t timep = time(NULL);
-    char tmp[64];
-    strftime(tmp, sizeof(tmp), "%Y-%m-%d %H%M%S.jpg",localtime(&timep));
+	// 保存大图
+	float p = rand() / (float)RAND_MAX;// 概率
+	std::string s_Title = getTitle();
+	const char *title = s_Title.c_str();
+	const char *folder = p < 0.8f ? "train" : "test";
 	char path[_MAX_PATH];
-	sprintf_s(path, "%s\\object detection\\%s\\%s", m_strPath, g_map.getItemName(class_id), tmp);
+	sprintf_s(path, "%s\\%s\\%s.jpg", m_strImage, folder, title);
 	cv::imwrite(path, m);
+	// XML文件
+	sprintf_s(path, "%s\\%s\\%s.xml", m_strImage, folder, title);
+	FILE *file = fopen(path, "w+");
+	char XML[4096] = { 0 };
+	sprintf_s(XML, 
+		"<annotation>\r\n"
+		"  <folder>%s</folder>\r\n"			//1目录
+		"  <filename>%s.jpg</filename>\r\n"	//2名称
+		"  <path>%s.jpg</path>\r\n"			//3路径
+		"  <source>\r\n"
+		"    <database>Unknown</database>\r\n"
+		"  </source>\r\n"
+		"  <size>\r\n"
+		"    <width>%d</width>\r\n"			//4宽
+		"    <height>%d</height>\r\n"		//5高
+		"    <depth>%d</depth>\r\n"			//6位深
+		"  </size>\r\n"
+		"  <segmented>0</segmented>\r\n"
+		, folder, title, title, m.cols, m.rows, m.step[1]);
+	int num = 0;// 小图编号
+	for (vector<Tips>::const_iterator p = tips.begin(); p != tips.end(); ++p)
+	{
+		// 当前结果
+		Tips tip = *p;
+		// 保存小图
+		folder = g_map.getItemName(tip.class_id);
+		sprintf_s(path, "%s\\%s\\%s_%d.jpg", m_strImage, folder, title, ++num);
+		cv::Rect rect = tip.rect;
+		cv::Mat sub_m(m, rect);
+		cv::imwrite(path, sub_m);
+		// 保存xml
+		char object[512];
+		sprintf_s(object, 
+			"  <object>\r\n"
+			"    <name>%s</name>\r\n"			//7类别
+			"    <pose>Unspecified</pose>\r\n"
+			"    <truncated>0</truncated>\r\n"
+			"    <difficult>0</difficult>\r\n"
+			"    <bndbox>\r\n"
+			"      <xmin>%d</xmin>\r\n"		//8
+			"      <ymin>%d</ymin>\r\n"		//9
+			"      <xmax>%d</xmax>\r\n"		//10
+			"      <ymax>%d</ymax>\r\n"		//11
+			"      <score>%.f</score>\r\n"	//12
+			"    </bndbox>\r\n"
+			"  </object>\r\n"
+			, folder
+			, rect.x, rect.y, rect.x + rect.width, rect.y + rect.height
+			, tip.score);
+		strcat(XML, object);
+	}
+	strcat(XML, "</annotation>\r\n");
+	if (file)
+	{
+		fwrite(XML, strlen(XML), 1, file);
+		fclose(file);
+	}
 }
 
 
@@ -109,8 +178,8 @@ void CobjDetectorDlg::DetectVideo(LPVOID param)
 		}
 #ifdef _DEBUG
 		last = clock();
-		if (last - cur > 45)
-			/*OUTPUT("======> DetectVideo time = %d, i = %d\n", last - cur, count)*/;
+		if (last - cur > 100)
+			OUTPUT("======> DetectVideo time = %d, i = %d\n", last - cur, count);
 #endif
 	} while (!pThis->m_bExit);
 	timeEndPeriod(1);
@@ -219,6 +288,7 @@ CobjDetectorDlg::CobjDetectorDlg(CWnd* pParent /*=NULL*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	memset(m_strFile, 0, _MAX_PATH);
 	memset(m_strPath, 0, _MAX_PATH);
+	memset(m_strImage, 0, _MAX_PATH);
 	m_fThreshSave = 0.8;
 	m_fThreshShow = 0.8;
 	m_bOK = false;
@@ -238,7 +308,7 @@ BEGIN_MESSAGE_MAP(CobjDetectorDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_COMMAND(ID_FILE_OPEN, &CobjDetectorDlg::OnFileOpen)
+	ON_COMMAND(ID_FILE_OPEN, &CobjDetectorDlg::OpenFileProc)
 	ON_WM_DESTROY()
 	ON_COMMAND(ID_OBJ_DETECT, &CobjDetectorDlg::OnObjDetect)
 	ON_COMMAND(ID_FILE_CLOSE, &CobjDetectorDlg::OnFileClose)
@@ -254,12 +324,14 @@ BEGIN_MESSAGE_MAP(CobjDetectorDlg, CDialogEx)
 	ON_COMMAND(ID_EDIT_STOP, &CobjDetectorDlg::OnEditStop)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_STOP, &CobjDetectorDlg::OnUpdateEditStop)
 	ON_WM_SIZE()
-	ON_COMMAND(ID_FILE_IPC, &CobjDetectorDlg::OnFileIpc)
+	ON_COMMAND(ID_FILE_IPC, &CobjDetectorDlg::OpenIPCProc)
 	ON_UPDATE_COMMAND_UI(ID_FILE_IPC, &CobjDetectorDlg::OnUpdateFileIpc)
 	ON_WM_ERASEBKGND()
 	ON_COMMAND(ID_SET_THRESHOLD, &CobjDetectorDlg::OnSetThreshold)
 	ON_COMMAND(ID_SET_PYTHON, &CobjDetectorDlg::OnSetPython)
-	ON_COMMAND(ID_SHOW_RESULT, &CobjDetectorDlg::OnShowResult)
+	ON_COMMAND(ID_SHOW_RESULT, &CobjDetectorDlg::ShowResultProc)
+	ON_COMMAND(ID_FULL_SCREEN, &CobjDetectorDlg::FullScreenProc)
+	ON_UPDATE_COMMAND_UI(ID_FULL_SCREEN, &CobjDetectorDlg::OnUpdateFullScreen)
 END_MESSAGE_MAP()
 
 
@@ -299,31 +371,41 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	m_picCtrl.GetClientRect(&m_rtPaint);
 	m_hPaintDC = pDC->GetSafeHdc();
 
-	// 读取类别信息
-	char path[_MAX_PATH], *p = path, obj[_MAX_PATH];
+	// 获取路径信息
+	char path[_MAX_PATH], *p = path;
 	GetModuleFileNameA(NULL, path, _MAX_PATH);
 	while('\0' != *p) ++p;
 	while('\\' != *p) --p;
 	*p = '\0';
 	strcpy_s(m_strPath, path);
-	sprintf_s(obj, "%s\\object detection", path);
+	sprintf_s(m_strImage, "%s\\object_detection", m_strPath);
+	if (-1 == _access(m_strImage, 0))
+		_mkdir(m_strImage);
+	// 创建训练及验证集目录
+	char temp[_MAX_PATH];
+	sprintf_s(temp, "%s\\%s", m_strImage, "train");
+	if (-1 == _access(temp, 0))
+		_mkdir(temp);
+	sprintf_s(temp, "%s\\%s", m_strImage, "test");
+	if (-1 == _access(temp, 0))
+		_mkdir(temp);
+	srand(time(NULL));
+	// 读取类别信息
 	strcpy(p, "\\label_map.ini");
 	if (-1 == _access(path, 0))
 		MessageBox(L"类别信息文件不存在!", L"提示", MB_ICONINFORMATION);
 	int n = GetPrivateProfileIntA("item", "class_num", 1, path);
 	g_map.Create(n);
 	m_tf = tfOutput(max(n, 1));
-	if (-1 == _access(obj, 0))
-		_mkdir(obj);
 	for (int i = 0; i < n; ++i)
 	{
-		char temp[_MAX_PATH], name[_MAX_PATH];
+		char name[_MAX_PATH];
 		sprintf_s(temp, "class%d", i+1);
 		GetPrivateProfileStringA("item", temp, temp, name, _MAX_PATH, path);
 		sprintf_s(temp, "class%d_id", i+1);
 		int id = GetPrivateProfileIntA("item", temp, i+1, path);
 		g_map.InsertItem(Item(name, id));
-		sprintf_s(temp, "%s\\%s", obj, name);
+		sprintf_s(temp, "%s\\%s", m_strImage, name);
 		if (-1 == _access(temp, 0))
 			_mkdir(temp);
 	}
@@ -331,10 +413,10 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	sprintf_s(path, "%s\\settings.ini", m_strPath);
 	if (-1 == _access(path, 0))
 		MessageBox(L"程序配置文件不存在!", L"提示", MB_ICONINFORMATION);
-	GetPrivateProfileStringA("settings", "thresh_show", "0.8", obj, _MAX_PATH, path);
-	m_fThreshShow = atof(obj);
-	GetPrivateProfileStringA("settings", "thresh_save", "1.0", obj, _MAX_PATH, path);
-	m_fThreshSave = atof(obj);
+	GetPrivateProfileStringA("settings", "thresh_show", "0.8", temp, _MAX_PATH, path);
+	m_fThreshShow = atof(temp);
+	GetPrivateProfileStringA("settings", "thresh_save", "1.0", temp, _MAX_PATH, path);
+	m_fThreshSave = atof(temp);
 	m_fThreshSave = max(m_fThreshSave, m_fThreshShow);
 	m_nBufSize = GetPrivateProfileIntA("settings", "buffer_size", 25, path);
 	m_nDetectStep = GetPrivateProfileIntA("settings", "detect_step", 6, path);
@@ -355,12 +437,13 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	_beginthread(&InitPyCaller, 0, this);
 #endif
 
-	GetDlgItem(IDC_IPC_CAPTURE)->ShowWindow(SW_HIDE);
-
-	ShowWindow(SW_SHOW);
-
 	m_pResult = new CResultDlg(this);
 	m_pResult->Create(IDD_RESULT_DLG, this);
+
+	m_bFullScreen = false;
+	GetDlgItem(IDC_IPC_CAPTURE)->ShowWindow(SW_HIDE);
+	ShowWindow(SW_SHOWMAXIMIZED);
+	ReSize();
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -444,9 +527,10 @@ HCURSOR CobjDetectorDlg::OnQueryDragIcon()
 
 
 
-void CobjDetectorDlg::OnFileOpen()
+void CobjDetectorDlg::OpenFileProc()
 {
-	// TODO: 在此添加命令处理程序代码
+	if (IsDetecting())
+		return;
 	CFileDialog dlg(TRUE);
 	if (IDOK == dlg.DoModal())
 	{
@@ -479,7 +563,7 @@ void CobjDetectorDlg::OnDestroy()
 
 void CobjDetectorDlg::OnObjDetect()
 {
-	if(m_py && !m_bOK)
+	if(NULL == m_py || false == m_bOK)
 		return;
 
 	if (m_py)
@@ -501,6 +585,36 @@ void CobjDetectorDlg::OnObjDetect()
 			m_nMediaState = STATE_DETECTING;
 		else if(STATE_PAUSE == m_nMediaState)
 			m_nMediaState = STATE_DETECTING;
+	}
+}
+
+
+void CobjDetectorDlg::ObjDetectProc()
+{
+	if(NULL == m_py || false == m_bOK)
+		return;
+
+	if (m_py)
+		m_py->ActivateFunc("test_src");
+
+	if (m_reader.IsImage())
+	{
+		DoDetect(m_reader.Front());
+		Invalidate(TRUE);
+	}else if (m_reader.IsVideo())
+	{
+		if (STATE_DONOTHING == m_nMediaState)
+		{
+			m_nMediaState = STATE_DETECTING;
+			m_reader.StartThread();
+			_beginthread(&DetectVideo, 0, this);
+		}
+		else if (STATE_PLAYING == m_nMediaState || STATE_PAUSE == m_nMediaState)
+		{
+			m_nMediaState = STATE_DETECTING;
+		}
+		else if(STATE_DETECTING == m_nMediaState)
+			m_nMediaState = STATE_PLAYING;
 	}
 }
 
@@ -608,13 +722,13 @@ void CobjDetectorDlg::OnUpdateFileOpen(CCmdUI *pCmdUI)
 
 void CobjDetectorDlg::OnUpdateObjDetect(CCmdUI *pCmdUI)
 {
-	pCmdUI->Enable(m_bOK && STATE_DETECTING != m_nMediaState);
+	pCmdUI->Enable(m_bOK && !m_reader.IsEmpty() && STATE_DETECTING != m_nMediaState);
 }
 
 
 void CobjDetectorDlg::OnUpdateFileClose(CCmdUI *pCmdUI)
 {
-	pCmdUI->Enable(!IsDetecting());
+	pCmdUI->Enable(!m_reader.IsEmpty());
 }
 
 
@@ -651,7 +765,7 @@ void CobjDetectorDlg::OnUpdateEditPlay(CCmdUI *pCmdUI)
 
 void CobjDetectorDlg::OnEditPause()
 {
-	m_nMediaState = STATE_PAUSE;
+	m_nMediaState = m_reader.IsStream() ? STATE_PLAYING : STATE_PAUSE;
 }
 
 
@@ -702,6 +816,8 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 		const int c = m.cols; // 列数
 		const int r = m.rows; // 行数
 		bool bNotFind = true; // 未检测到目标
+		bool bSave = false; // 是否需要保存
+		cv::Mat M = m.clone(); // 原始图像
 		for (int k = 0; k < g_map.num; ++k)// 遍历每个类别
 		{
 			int next = k * MAX_BOXES_NUM;
@@ -714,21 +830,24 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 				Tips tip(rect, m_tf.scores[next + i], m_tf.classes[next + i]);
 				if (m_tf.scores[next + i] > m_fThreshShow)
 				{
+					if (0 == i)
+					{
+						if (m_tf.scores[next + i] > m_fThreshSave)
+							bSave = true;
+						if (m_pResult->IsWindowVisible())// 对相似度最大的结果进行展示
+						{
+							bNotFind = false;
+							cv::Mat sub_m(m, rect);
+							m_pResult->ShowResult(sub_m, m_tf.classes[next], m_tf.counts[k], m_tf.scores[next]);
+						}
+					}
 					tip.AddTips(m);					// 显示
 					tips.push_back(tip);
-					if (m_tf.scores[next + i] > m_fThreshSave)
-						Save(m, m_tf.classes[next + i]);// 保存
 				}
 			}
-			if (0 < m_tf.counts[k] && m_pResult->IsWindowVisible()) // 对相似度最大的结果进行展示
-			{
-				bNotFind = false;
-				const float *p = m_tf.boxes + next * 4;
-				float y1 = *p++, x1 = *p++, y2 = *p++, x2 = *p++;
-				cv::Mat sub_m(m, cv::Rect(CvPoint(c * x1, r * y1), CvPoint(c * x2, r * y2)));
-				m_pResult->ShowResult(sub_m, m_tf.classes[next], m_tf.counts[k], m_tf.scores[next]);
-			}
 		}
+		if (bSave)
+			Save(M, tips);
 		if (bNotFind)
 			m_pResult->ClearResult();
 	}
@@ -738,10 +857,26 @@ std::vector<Tips> CobjDetectorDlg::DoDetect(cv::Mat &m)
 
 BOOL CobjDetectorDlg::PreTranslateMessage(MSG* pMsg)
 {
-	// 屏蔽 ESC/Enter 关闭窗体
-	if( pMsg->message == WM_KEYDOWN && 
-		(pMsg->wParam == VK_ESCAPE || pMsg->wParam == VK_RETURN) )
-		return TRUE;
+	if( pMsg->message == WM_KEYDOWN)
+	{
+		switch (pMsg->wParam)
+		{
+		case VK_F5: // 目标检测
+			BeginWaitCursor();
+			ObjDetectProc();
+			EndWaitCursor();
+			return TRUE;
+		case VK_F11:// 全屏处理
+			BeginWaitCursor();
+			FullScreenProc();
+			EndWaitCursor();
+			return TRUE;
+		case VK_ESCAPE: case VK_RETURN:// 屏蔽 ESC/Enter 关闭窗体
+			return TRUE;
+		default:
+			break;
+		}
+	}
 
 	return CDialogEx::PreTranslateMessage(pMsg);
 }
@@ -750,7 +885,12 @@ BOOL CobjDetectorDlg::PreTranslateMessage(MSG* pMsg)
 void CobjDetectorDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
+	return ReSize();
+}
 
+
+void CobjDetectorDlg::ReSize()
+{
 	CRect rt;
 	GetClientRect(&rt);
 
@@ -769,8 +909,10 @@ void CobjDetectorDlg::OnSize(UINT nType, int cx, int cy)
 }
 
 
-void CobjDetectorDlg::OnFileIpc()
+void CobjDetectorDlg::OpenIPCProc()
 {
+	if (IsDetecting())
+		return;
 	CIPCConfigDlg dlg;
 	if (IDOK == dlg.DoModal())
 	{
@@ -859,7 +1001,7 @@ void CobjDetectorDlg::OnSetPython()
 }
 
 
-void CobjDetectorDlg::OnShowResult()
+void CobjDetectorDlg::ShowResultProc()
 {
 	m_pResult->ShowWindow(m_pResult->IsWindowVisible() ? SW_HIDE : SW_SHOW);
 }
@@ -876,4 +1018,50 @@ BOOL CobjDetectorDlg::DestroyWindow()
 	m_pResult->DestroyWindow();
 
 	return CDialogEx::DestroyWindow();
+}
+
+
+// 全屏处理函数
+void CobjDetectorDlg::FullScreenProc()
+{
+	if (false == m_bFullScreen)
+	{
+		//get current system resolution
+		int g_iCurScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+		int g_iCurScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+		//for full screen while backplay
+		GetWindowPlacement(&m_struOldWndpl);
+
+		CRect rectWholeDlg;//entire client(including title bar)
+		CRect rectClient;//client area(not including title bar)
+		CRect rectFullScreen;
+		GetWindowRect(&rectWholeDlg);
+		RepositionBars(0, 0xffff, AFX_IDW_PANE_FIRST, reposQuery, &rectClient);
+		ClientToScreen(&rectClient);
+
+		rectFullScreen.left = rectWholeDlg.left-rectClient.left;
+		rectFullScreen.top = rectWholeDlg.top-rectClient.top;
+		rectFullScreen.right = rectWholeDlg.right+g_iCurScreenWidth - rectClient.right;
+		rectFullScreen.bottom = rectWholeDlg.bottom+g_iCurScreenHeight - rectClient.bottom;
+		//enter into full screen;
+		WINDOWPLACEMENT struWndpl;
+		struWndpl.length = sizeof(WINDOWPLACEMENT);
+		struWndpl.flags = 0;
+		struWndpl.showCmd = SW_SHOWNORMAL;
+		struWndpl.rcNormalPosition = rectFullScreen;
+		SetWindowPlacement(&struWndpl);
+
+		m_bFullScreen = true;
+	}else
+	{
+		SetWindowPlacement(&m_struOldWndpl);
+		m_bFullScreen = false;
+	}
+}
+
+
+void CobjDetectorDlg::OnUpdateFullScreen(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(!m_reader.IsEmpty());
 }

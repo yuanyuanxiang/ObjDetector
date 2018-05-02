@@ -21,12 +21,7 @@ void CFileReader::CaptureThread(LPVOID param)
 #endif
 		cv::Mat m = pThis->IsIPC() ? pThis->m_IPC.GetCapture() : 
 			pThis->ReadCamera();
-		if (m.empty())
-		{
-			Sleep(10);
-			continue;
-		}
-		if(!pThis->PushStream(m)) // 处理不过来将进行丢帧
+		if (m.empty() || !pThis->PushStream(m)) // 处理不过来将进行丢帧
 		{
 			Sleep(10);
 			continue;
@@ -70,7 +65,7 @@ void CFileReader::SetBufferSize(int nSize)
 
 CFileReader::CFileReader(void)
 {
-	m_nType = TYPE_IMAGE;
+	m_nType = TYPE_UNKNOWN;
 	m_nImageBuf = 10;
 	m_nStreamBuf = 10;
 	memset(m_nDims, 0, 3 * sizeof(int));
@@ -111,12 +106,12 @@ bool CFileReader::Open(const char *path)
 			m_nDims[0] = m.rows;
 			m_nDims[1] = m.cols;
 			m_nDims[2] = m.step[1];
-			PushImage(m);
-			return true;
+			return PushImage(m);
 		}
 	}catch(cv::Exception &e)
 	{
-	}
+		OUTPUT("======> cv::Exception: %s\n", e.what());
+	}catch(...) { }
 	return false;
 }
 
@@ -153,12 +148,12 @@ bool CFileReader::OpenIPCamera(const IPCamInfo &cam, HWND hWnd)
 			m_nDims[0] = m.rows;
 			m_nDims[1] = m.cols;
 			m_nDims[2] = m.step[1];
-			PushImage(m);
-			return true;
+			return PushImage(m);
 		}
 	}catch(cv::Exception &e)
 	{
-	}
+		OUTPUT("======> cv::Exception: %s\n", e.what());
+	}catch(...) { }
 	return false;
 }
 
@@ -168,16 +163,22 @@ cv::Mat  CFileReader::PlayVideo()
 	cv::Mat m;
 	try
 	{
-		if (TYPE_VIDEO == m_nType)
+		switch (m_nType)
 		{
+		case TYPE_UNKNOWN:
+			break;
+		case TYPE_IMAGE:
+			break;
+		case TYPE_VIDEO:
 			if (m_Cap.read(m))
 				return m;
-		}
-		else if (TYPE_CAMERA == m_nType)
-			return 0 == m_nStreamBuf ? ReadCamera() : PopStream();
-		else if (TYPE_IPC == m_nType)
+		case TYPE_IPC:
 			return 0 == m_nStreamBuf ? m_IPC.GetCapture() : PopStream();
-
+		case TYPE_CAMERA:
+			return 0 == m_nStreamBuf ? ReadCamera() : PopStream();
+		default:
+			break;
+		}
 	}catch(...){
 	}
 	return m;

@@ -8,6 +8,8 @@
 #include "FileReader.h"
 #include "CvvImage.h"
 #include "ResultDlg.h"
+#include <vector>
+using namespace std;
 
 // 矩形框颜色
 #define RECT_COLOR CV_RGB(0, 0, 255)
@@ -26,13 +28,17 @@ struct Tips
 	cv::Rect rect;		// 矩形框
 	Tips() { memset(this, 0, sizeof(Tips)); }
 	Tips(const cv::Rect &rt, float s, int id = 1) : class_id(id), score(s), rect(rt) { }
+	int Xmin() const { return rect.x; }
+	int Ymin() const { return rect.y; }
+	int Xmax() const { return rect.x + rect.width; }
+	int Ymax() const { return rect.y + rect.height; }
 	// 为图像添加注释
 	void AddTips(cv::Mat &m) const
 	{
 		cv::rectangle(m, rect, RECT_COLOR, THICK_NESS);
 		char text[256];
 		sprintf_s(text, "%s:%.3f", g_map.getItemName(class_id), score);
-		cv::putText(m, text, cvPoint(rect.x, rect.y), 
+		cv::putText(m, text, cv::Point(rect.x, rect.y), 
 			CV_FONT_HERSHEY_SIMPLEX, 1.0, TEXT_COLOR, THICK_NESS);
 	}
 	void Output() const
@@ -51,7 +57,7 @@ enum MediaState
 };
 
 #define Thread_Start    1			// 线程启动
-#define Thread_Stop		0			// 线程停在
+#define Thread_Stop		0			// 线程停止
 
 // 线程名称枚举
 enum Thread
@@ -80,6 +86,8 @@ protected:
 	char m_strFile[_MAX_PATH];		// 文件路径
 
 	char m_strPath[_MAX_PATH];		// 当前路径
+
+	char m_strImage[_MAX_PATH];		// 图像路径
 
 	CFileReader m_reader;			// 文件读取器
 
@@ -111,19 +119,23 @@ protected:
 
 	CString m_strSettings;			// setting.ini
 
+	bool m_bFullScreen;
+	WINDOWPLACEMENT m_struOldWndpl;
+
 	// 是否正在检测
 	bool IsDetecting() const { return STATE_DETECTING == m_nMediaState; }
 
 	// 是否正忙
 	bool IsBusy() const { return STATE_DETECTING == m_nMediaState || STATE_PLAYING == m_nMediaState; }
 
+	// 获取检测步长
 	const int& GetStep() const { return m_nDetectStep; }
 
 	// 绘制图像
 	void Paint(const cv::Mat &m);
 
 	// 保存图像
-	void Save(const cv::Mat &m, int class_id);
+	void Save(const cv::Mat &m, const vector<Tips> &tips);
 
 	// 初始化python调用环境
 	static void InitPyCaller(LPVOID param);
@@ -140,6 +152,10 @@ protected:
 
 	CResultDlg *m_pResult; // 结果展示对话框
 
+	void ReSize();		// 调整窗口位置
+
+	void ObjDetectProc();// 进行目标检测
+
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
@@ -149,7 +165,7 @@ protected:
 
 public:
 	CStatic m_picCtrl;
-	afx_msg void OnFileOpen();
+	afx_msg void OpenFileProc();
 	afx_msg void OnDestroy();
 	afx_msg void OnObjDetect();
 	afx_msg void OnFileClose();
@@ -166,11 +182,13 @@ public:
 	afx_msg void OnUpdateEditStop(CCmdUI *pCmdUI);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
-	afx_msg void OnFileIpc();
+	afx_msg void OpenIPCProc();
 	afx_msg void OnUpdateFileIpc(CCmdUI *pCmdUI);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSetThreshold();
 	afx_msg void OnSetPython();
-	afx_msg void OnShowResult();
+	afx_msg void ShowResultProc();
 	virtual BOOL DestroyWindow();
+	afx_msg void FullScreenProc();
+	afx_msg void OnUpdateFullScreen(CCmdUI *pCmdUI);
 };

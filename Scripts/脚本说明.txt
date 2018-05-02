@@ -1,0 +1,26 @@
+
+程序启动时，在当前可执行文件的目录下，生成object detection目录，并在该目录下生成
+train、test及类别目录。
+
+train目录存放将来用于训练的图片，test存放将来用于验证的图片，类别目录存放目标识别
+的结果图片。
+
+将脚本拷贝至"object detection"目录下面，按照下述说明进行操作。
+
+[1]将指定目录下面的图片标注xml格式信息转化为csv格式信息。
+    cd 到 object detection目录，执行：
+
+    python xml_to_csv.py ./train
+
+	python xml_to_csv.py ./test
+	
+来源：https://github.com/datitran/raccoon_dataset
+
+[2]将csv转化为tfrecord。
+    cd 到 object detection目录，执行：
+
+    python generate_tfrecord.py --csv_input=./train/images.csv --output_path=train.record
+
+	python generate_tfrecord.py --csv_input=./test/images.csv --output_path=test.record
+	
+来源：https://github.com/datitran/raccoon_dataset
