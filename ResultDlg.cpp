@@ -19,6 +19,7 @@ CResultDlg::CResultDlg(CWnd* pParent /*=NULL*/)
 	, m_nClassId(1)
 	, m_nCounts(0)
 	, m_fScores(0)
+	, m_bShowContour(0)
 {
 
 }
@@ -35,7 +36,16 @@ void CResultDlg::ShowResult(const cv::Mat &m, int class_id, int counts, float sc
 	{
 		if (!m.empty())
 		{
-			IplImage t = IplImage(m);
+			cv::Mat gray;
+			if (m_bShowContour)
+			{
+				cvtColor(m, gray, CV_BGR2GRAY);
+				Canny(gray, gray, 125, 350);
+				threshold(gray, gray, 128, 255, THRESH_BINARY);
+			}else 
+				gray = m;
+
+			IplImage t = IplImage(gray);
 			m_Image.CopyOf(&t, 1);
 			m_Image.DrawToHDC(m_hPaintDC, m_rtPaint);
 		}else
@@ -62,6 +72,7 @@ void CResultDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CResultDlg, CDialogEx)
 	ON_WM_TIMER()
+	ON_BN_CLICKED(IDC_SHOW_CONTOUR, &CResultDlg::OnBnClickedShowContour)
 END_MESSAGE_MAP()
 
 
@@ -100,6 +111,8 @@ BOOL CResultDlg::OnInitDialog()
 		if (fun) fun(m_hWnd, RGB(0, 0, 0), 200, 0x2);
 		FreeLibrary(hInst);
 	}
+	CButton *pBn = (CButton*)GetDlgItem(IDC_SHOW_CONTOUR);
+	pBn->SetCheck(m_bShowContour);
 
 	return TRUE;
 }
@@ -117,4 +130,12 @@ void CResultDlg::OnTimer(UINT_PTR nIDEvent)
 	}
 
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+
+void CResultDlg::OnBnClickedShowContour()
+{
+	m_bShowContour = !m_bShowContour;
+	CButton *pBn = (CButton*)GetDlgItem(IDC_SHOW_CONTOUR);
+	pBn->SetCheck(m_bShowContour);
 }

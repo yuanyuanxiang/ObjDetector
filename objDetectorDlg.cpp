@@ -114,8 +114,8 @@ void CobjDetectorDlg::InitPyCaller(LPVOID param)
 	CobjDetectorDlg *pThis = (CobjDetectorDlg*)param;
 	pThis->m_nThreadState[_InitPyCaller] = Thread_Start;
 	if (NULL == pThis->m_py)
-		pThis->m_py = new pyCaller("detect");
-	pThis->m_bOK = true;
+		pThis->m_py = new pyCaller();
+	pThis->m_bOK = pThis->m_py->Init("detect");
 	pThis->m_nThreadState[_InitPyCaller] = Thread_Stop;
 }
 
@@ -992,9 +992,14 @@ void CobjDetectorDlg::OnSetPython()
 			}
 			else
 			{
-				BeginWaitCursor();
-				m_py->Init("detect");
-				EndWaitCursor();
+				static bool bInit = false;
+				if (false == bInit)// 仅允许初始化一次
+				{
+					bInit = true;
+#if USING_TENSORFLOW
+					_beginthread(&InitPyCaller, 0, this);
+#endif
+				}
 			}
 		}
 	}

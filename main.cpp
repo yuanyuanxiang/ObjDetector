@@ -4,7 +4,8 @@ int main(int argc, const char *argv[])
 {
 	const char *path = argc == 1 ? "image.jpg" : argv[1];
 
-	pyCaller py("detect");
+	pyCaller py;
+	py.Init("detect");
 	py.ActivateFunc("test_image");
 	tfOutput output;
 	for (int i = 0; i < 10; ++i)

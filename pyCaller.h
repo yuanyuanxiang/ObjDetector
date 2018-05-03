@@ -210,12 +210,11 @@ public:
 	}
 
 	/**
-	* @brief 构造一个pyCaller对象，接收py脚本名称作为传入参数
+	* @brief 构造一个pyCaller对象
 	*/
-	pyCaller(const char * module_name)
+	pyCaller()
 	{
 		pModule = NULL;
-		Init(module_name);
 	}
 
 	/**

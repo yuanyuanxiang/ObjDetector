@@ -50,4 +50,6 @@ public:
 	int m_nCounts;
 	float m_fScores;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	int m_bShowContour;
+	afx_msg void OnBnClickedShowContour();
 };
