@@ -6,9 +6,6 @@
 #objDetector
 一个基于对话框的调用TensorFlow进行目标检测的例子。
 
-#ShowImage
-一个C++调用Python返回numpy array的例子。
-
 #编译前置条件
 0、已训练好的模型（frozen_inference_graph.pb）
 1、安装python3.5 64位，安装OpenCV 64位
@@ -33,6 +30,10 @@
 4、需要将被调用的 *.py 文件拷贝到生成目录；
 
 5、需要给定目标检测的模型文件，并在相应的 *.py 文件中填写。
+
+#补充说明 2018.6.3
+
+本程序测试所用的模型：Faster R-CNN with Inception v2（faster_rcnn_inception_v2）
 
 有问题，请联系：yuan_yuanxiang@163.com
 

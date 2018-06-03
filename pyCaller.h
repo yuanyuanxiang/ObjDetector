@@ -176,6 +176,7 @@ private:
 	static wchar_t pyHome[_MAX_PATH];			// python路径
 	PyObject* pModule;							// python模块
 	std::map<std::string, PyObject*> pFunMap;	// 函数列表
+	bool bMultiThread;							// 多线程
 
 	// 初始化 numpy 执行环境，主要是导入包
 	// python2.7用void返回类型，python3.0以上用int返回类型
@@ -212,9 +213,10 @@ public:
 	/**
 	* @brief 构造一个pyCaller对象
 	*/
-	pyCaller()
+	pyCaller(bool multi_thread = true)
 	{
 		pModule = NULL;
+		bMultiThread = multi_thread;
 	}
 
 	/**
@@ -232,7 +234,11 @@ public:
 				OUTPUT("init_numpy failed.\n");
 				return false;
 			}
+			if (bMultiThread)
+				PyEval_InitThreads(); // 多线程支持
 			PyObject *py = PyImport_ImportModule(module_name);
+			if (bMultiThread && PyEval_ThreadsInitialized())
+				PyEval_SaveThread();
 			if (NULL == py)
 				OUTPUT("PyImport_ImportModule failed.\n");
 			t = clock() - t;
@@ -266,7 +272,11 @@ public:
 			p != pFunMap.end(); ++p)
 			if (p->second) Py_DECREF(p->second);
 		if (pyHome[0])
+		{
+			if (bMultiThread && !PyGILState_Check())
+				PyGILState_Ensure();
 			Py_Finalize();
+		}
 	}
 
 	// 是否加载了指定模块
@@ -290,8 +300,20 @@ public:
 		}
 		if (bFind)
 			return true;
+		PyObject *pFunc = NULL;
 
-		PyObject *pFunc =  pModule ? PyObject_GetAttrString(pModule, func_name) : 0;
+		PyGILState_STATE gstate;
+		int nHold = bMultiThread ? PyGILState_Check() : TRUE;
+		if (!nHold) gstate = PyGILState_Ensure();
+		Py_BEGIN_ALLOW_THREADS;
+		Py_BLOCK_THREADS;
+
+		pFunc =  pModule ? PyObject_GetAttrString(pModule, func_name) : 0;
+
+		Py_UNBLOCK_THREADS;
+		Py_END_ALLOW_THREADS;
+		if (!nHold) PyGILState_Release(gstate);
+
 		pFunMap.insert(std::make_pair(func_name, pFunc));
 
 		return pFunc;
@@ -307,15 +329,25 @@ public:
 		PyObject *pFunc = pFunMap[func_name];
 		if (pFunc)
 		{
+			PyGILState_STATE gstate;
+			int nHold = bMultiThread ? PyGILState_Check() : TRUE;
+			if (!nHold)gstate = PyGILState_Ensure();
+			Py_BEGIN_ALLOW_THREADS;
+			Py_BLOCK_THREADS;
+
 			const char *utf8 = MByteToUtf8(arg);
 			PyObject* pArg = Py_BuildValue("(s)", utf8);
 			delete [] utf8;
-			if (NULL == pArg)
-				return out;
-			PyObject* pRetVal = PyEval_CallObject(pFunc, pArg);
-			if (NULL == pRetVal)
-				return out;
-			out = ParseResult(pRetVal, tf);
+			if (pArg)
+			{
+				PyObject* pRetVal = PyEval_CallObject(pFunc, pArg);
+				if (pRetVal)
+					out = ParseResult(pRetVal, tf);
+			}
+
+			Py_UNBLOCK_THREADS;
+			Py_END_ALLOW_THREADS;
+			if (!nHold)PyGILState_Release(gstate);
 		}
 		return out;
 	}
@@ -333,10 +365,19 @@ public:
 #endif
 		if (pFunc)
 		{
- 			PyObject* pRetVal = PyEval_CallObject(pFunc, arg);
-			if (NULL == pRetVal)
-				return out;
-			out = ParseResult(pRetVal, tf);
+			PyGILState_STATE gstate;
+			int nHold = bMultiThread ? PyGILState_Check() : TRUE;
+			if (!nHold)gstate = PyGILState_Ensure();
+			Py_BEGIN_ALLOW_THREADS;
+			Py_BLOCK_THREADS;
+
+			PyObject* pRetVal = PyEval_CallObject(pFunc, arg);
+			if (pRetVal)
+				out = ParseResult(pRetVal, tf);
+
+			Py_UNBLOCK_THREADS;
+			Py_END_ALLOW_THREADS;
+			if (!nHold)PyGILState_Release(gstate);
 		}
 		return out;
 	}

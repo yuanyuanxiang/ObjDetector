@@ -563,29 +563,7 @@ void CobjDetectorDlg::OnDestroy()
 
 void CobjDetectorDlg::OnObjDetect()
 {
-	if(NULL == m_py || false == m_bOK)
-		return;
-
-	if (m_py)
-		m_py->ActivateFunc("test_src");
-
-	if (m_reader.IsImage())
-	{
-		DoDetect(m_reader.Front());
-		Invalidate(TRUE);
-	}else if (m_reader.IsVideo())
-	{
-		if (STATE_DONOTHING == m_nMediaState)
-		{
-			m_nMediaState = STATE_DETECTING;
-			m_reader.StartThread();
-			_beginthread(&DetectVideo, 0, this);
-		}
-		else if(STATE_PLAYING == m_nMediaState)
-			m_nMediaState = STATE_DETECTING;
-		else if(STATE_PAUSE == m_nMediaState)
-			m_nMediaState = STATE_DETECTING;
-	}
+	ObjDetectProc();
 }
 
 
@@ -952,6 +930,24 @@ BOOL CobjDetectorDlg::OnEraseBkgnd(CDC* pDC)
 }
 
 
+void WriteConfigFileDouble(const CString &conf,  double f, const char *s)
+{
+	char buf[64];
+	sprintf_s(buf, "%f", f);
+	USES_CONVERSION;
+	WritePrivateProfileString(L"settings", A2W(s), A2W(buf), conf);
+}
+
+
+void WriteConfigFileInt(const CString &conf,  int f, const char *s)
+{
+	char buf[64];
+	sprintf_s(buf, "%d", f);
+	USES_CONVERSION;
+	WritePrivateProfileString(L"settings", A2W(s), A2W(buf), conf);
+}
+
+
 void CobjDetectorDlg::OnSetThreshold()
 {
 	CSettingsDlg dlg;
@@ -961,6 +957,14 @@ void CobjDetectorDlg::OnSetThreshold()
 	dlg.m_nDetectStep = m_nDetectStep;
 	if (IDOK == dlg.DoModal())
 	{
+		if (m_fThreshShow != dlg.m_fThreshShow)
+			WriteConfigFileDouble(m_strSettings, max(dlg.m_fThreshShow, 0.), "thresh_show");
+		if (m_fThreshSave != dlg.m_fThreshSave)
+			WriteConfigFileDouble(m_strSettings, max(dlg.m_fThreshSave, m_fThreshShow), "thresh_save");
+		if (m_nBufSize != dlg.m_nBufferSize)
+			WriteConfigFileInt(m_strSettings, dlg.m_nBufferSize, "buffer_size");
+		if (m_nDetectStep != dlg.m_nDetectStep)
+			WriteConfigFileInt(m_strSettings, dlg.m_nDetectStep, "detect_step");
 		m_fThreshShow = max(dlg.m_fThreshShow, 0.);
 		m_fThreshSave = max(dlg.m_fThreshSave, m_fThreshShow);
 		m_nBufSize = dlg.m_nBufferSize;
