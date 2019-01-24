@@ -22,4 +22,7 @@
   <ItemGroup>
     <None Include="show_image.py" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="关于ShowImage.txt" />
+  </ItemGroup>
 </Project>

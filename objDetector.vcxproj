@@ -240,6 +240,9 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
   <ItemGroup>
     <Image Include="res\objDetector.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="关于ObjDector.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

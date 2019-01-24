@@ -108,4 +108,7 @@
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="关于ObjDector.txt" />
+  </ItemGroup>
 </Project>

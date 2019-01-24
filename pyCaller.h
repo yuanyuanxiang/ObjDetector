@@ -287,6 +287,8 @@ public:
 	*/
 	bool ActivateFunc(const char * func_name)
 	{
+		if (NULL == pModule)
+			return false;
 		bool bFind = false;
 		std::string fun(func_name);
 		for (std::map<std::string, PyObject*>::iterator p = pFunMap.begin(); 

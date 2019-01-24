@@ -148,6 +148,9 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
     <ClInclude Include="pyCaller.h" />
     <ClInclude Include="StrTransfer.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="关于CallPython.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
