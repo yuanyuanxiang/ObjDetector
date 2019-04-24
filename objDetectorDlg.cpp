@@ -116,6 +116,8 @@ void CobjDetectorDlg::InitPyCaller(LPVOID param)
 	if (NULL == pThis->m_py)
 		pThis->m_py = new pyCaller();
 	pThis->m_bOK = pThis->m_py->Init("detect");
+	if (pThis->m_pyHome[0] && !pThis->m_bOK)
+		AfxMessageBox(_T("加载\"detect.py\"失败, 请检查python环境!"));
 	pThis->m_nThreadState[_InitPyCaller] = Thread_Stop;
 }
 
@@ -428,7 +430,7 @@ BOOL CobjDetectorDlg::OnInitDialog()
 	if(false == pyCaller::SetPythonHome(m_pyHome))
 	{
 		m_pyHome[0] = '\0';
-		MessageBox(L"python_home配置错误!", L"提示", MB_ICONINFORMATION);
+		MessageBox(L"python_home配置错误!\r\n请通过配置菜单选择python路径。", L"提示", MB_ICONINFORMATION);
 	}
 
 	m_strSettings = CString(path);

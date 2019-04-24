@@ -22,6 +22,7 @@
     <ProjectGuid>{956891AB-9951-4088-8102-64ABC8763179}</ProjectGuid>
     <RootNamespace>objDetector</RootNamespace>
     <Keyword>MFCProj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -34,7 +35,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
@@ -49,7 +50,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -134,7 +135,9 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py
+      <Command>copy "$(SolutionDir)detect.py" "$(SolutionDir)x64\$(Configuration)\detect.py"
+copy "$(SolutionDir)label_map.ini" "$(SolutionDir)x64\$(Configuration)\label_map.ini"
+copy "$(SolutionDir)HC_SDK\*.*" "$(SolutionDir)x64\$(Configuration)"
 copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\frozen_inference_graph.pb</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -193,7 +196,9 @@ copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)detect.py $(SolutionDir)x64\$(Configuration)\detect.py
+      <Command>copy "$(SolutionDir)detect.py" "$(SolutionDir)x64\$(Configuration)\detect.py"
+copy "$(SolutionDir)label_map.ini" "$(SolutionDir)x64\$(Configuration)\label_map.ini"
+copy "$(SolutionDir)HC_SDK\*.*" "$(SolutionDir)x64\$(Configuration)"
 copy $(SolutionDir)frozen_inference_graph.pb $(SolutionDir)x64\$(Configuration)\frozen_inference_graph.pb</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

@@ -37,8 +37,8 @@ private:
 	int m_nDims[3];						// 图像维度
 	int m_nImageBuf;					// 目标识别缓存帧数
 	int m_nStreamBuf;					// 视频流缓存帧数
-	std::queue<const cv::Mat> m_Buffer;	// 缓存队列
-	std::queue<const cv::Mat> m_Stream;	// IPC Stream队列
+	std::queue<cv::Mat> m_Buffer;		// 缓存队列
+	std::queue<cv::Mat> m_Stream;		// IPC Stream队列
 	VideoCapture m_Cap;					// 视频读取器
 	IPCamVisitor m_IPC;					// IPC 读取器
 
