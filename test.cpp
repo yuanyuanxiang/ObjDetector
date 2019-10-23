@@ -3,7 +3,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 // Python 配置
-#define PYTHON_HOME L"D:/Anaconda3/envs/tfgpu"
+#define PYTHON_HOME L"D:\\ProgramData\\Anaconda3\\envs\\tfcpu"
 
 // 包含 numpy 中的头文件arrayobject.h
 #include "..\Lib\site-packages\numpy\core\include\numpy\arrayobject.h"

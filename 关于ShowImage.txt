@@ -2,3 +2,5 @@
 一个C++调用Python显示一副图像的控制台程序。
 
 python脚本：show_image.py
+
+如果缺少库，请用pip install 进行安装。

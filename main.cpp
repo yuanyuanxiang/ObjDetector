@@ -1,12 +1,13 @@
 #include "pyCaller.h"
 
+// 注意调用SetPythonHome修改当前使用的python.
 int main(int argc, const char *argv[])
 {
 	const char *path = argc == 1 ? "image.jpg" : argv[1];
 
 	pyCaller py;
 	// 设置当前用的python
-	py.SetPythonHome("D:\\Anaconda3\\envs\\tfgpu");
+	py.SetPythonHome("D:\\ProgramData\\Anaconda3\\envs\\tfcpu");
 	py.Init("detect");
 	py.ActivateFunc("test_image");
 	tfOutput output;
